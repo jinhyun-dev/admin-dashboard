@@ -154,8 +154,10 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
       <header style={{
         backgroundColor: 'var(--bg-primary)',
         borderBottom: '1px solid var(--border-color)',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
         zIndex: 40,
         height: '64px'
       }}>

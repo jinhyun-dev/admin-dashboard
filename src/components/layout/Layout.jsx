@@ -36,6 +36,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           style={{
             flex: 1,
             padding: '1.5rem',
+            paddingTop: 'calc(64px + 1.5rem)',
             marginLeft: isMobile ? '0' : '256px',
             transition: 'all 0.3s ease'
           }}
