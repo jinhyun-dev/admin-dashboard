@@ -2,7 +2,6 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'rea
 import { Edit2, Trash2, Search } from 'lucide-react';
 import Table from '../ui/Table';
 import Button from '../ui/Button';
-import Input from '../ui/Input';
 
 const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' }, ref) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
@@ -111,7 +110,8 @@ const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' 
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-secondary)',
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              zIndex: 1
             }}
           />
           <input
@@ -119,17 +119,21 @@ const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' 
             placeholder="Search users..."
             value={searchTerm}
             onChange={handleLocalSearchChange}
+            className="form-input"
             style={{
               width: '100%',
+              height: '40px',
               paddingLeft: '2.5rem',
               paddingRight: searchTerm ? '2.5rem' : '0.75rem',
-              padding: '0.5rem 0.75rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              backgroundColor: 'var(--bg-secondary)',
               border: '1px solid var(--border-color)',
-              borderRadius: '0.5rem',
-              backgroundColor: 'var(--bg-primary)',
+              borderRadius: '0.375rem',
               color: 'var(--text-primary)',
               fontSize: '0.875rem',
-              outline: 'none'
+              outline: 'none',
+              boxSizing: 'border-box'
             }}
             onFocus={(e) => {
               e.target.style.borderColor = 'var(--color-primary)';
@@ -155,7 +159,8 @@ const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' 
                 cursor: 'pointer',
                 fontSize: '1.25rem',
                 lineHeight: 1,
-                padding: '0.25rem'
+                padding: '0.25rem',
+                zIndex: 1
               }}
             >
               ×
