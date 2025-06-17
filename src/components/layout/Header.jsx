@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, Sun, Moon, Bell, Search, User, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { ROLES } from '../../utils/permissions';
+import { useAuth } from '../../hooks/useAuth';
 
 const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPage }) => {
   const { theme, toggleTheme } = useTheme();
+  const { updateUserRole } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
   const [searchValue, setSearchValue] = useState('');
@@ -396,8 +399,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
               >
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
-
-              {/* 사용자 메뉴 */}
+{/* 사용자 메뉴 */}
               <div className="user-menu-dropdown" style={{ position: 'relative' }}>
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -541,9 +543,62 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       </button>
                     </div>
                     
+                    {/* 역할 전환 섹션 */}
                     <div style={{
                       padding: '0.5rem',
-                      borderTop: '1px solid var(--border-color)'
+                      borderTop: '1px solid var(--border-color)',
+                      borderBottom: '1px solid var(--border-color)'
+                    }}>
+                      <p style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary)',
+                        margin: '0 0 0.5rem 0.75rem',
+                        textTransform: 'uppercase',
+                        fontWeight: '500'
+                      }}>
+                        Switch Role (Demo)
+                      </p>
+                      {Object.values(ROLES).map((role) => (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            updateUserRole(role);
+                            setUserProfile(prev => ({ ...prev, role }));
+                            setShowUserMenu(false);
+                            alert(`Role switched to: ${role}`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem 0.75rem',
+                            fontSize: '0.875rem',
+                            color: userProfile.role === role ? 'var(--color-primary)' : 'var(--text-primary)',
+                            backgroundColor: userProfile.role === role ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            marginBottom: '0.25rem'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (userProfile.role !== role) {
+                              e.target.style.backgroundColor = 'var(--bg-secondary)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (userProfile.role !== role) {
+                              e.target.style.backgroundColor = 'transparent';
+                            } else {
+                              e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                            }
+                          }}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div style={{
+                      padding: '0.5rem'
                     }}>
                       <button
                         onClick={() => handleUserMenuAction('logout')}
@@ -579,7 +634,8 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
           </div>
         </div>
       </header>
-{/* Profile Modal */}
+
+      {/* Profile Modal */}
       {showProfileModal && (
         <div style={{
           position: 'fixed',

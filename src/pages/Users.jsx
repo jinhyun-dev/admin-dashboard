@@ -7,8 +7,9 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { INITIAL_USERS } from '../utils/constants';
+import { hasPermission, PERMISSIONS } from '../utils/permissions';
 
-const Users = () => {
+const Users = ({ currentUserRole }) => {
   const [users, setUsers] = useLocalStorage('users', INITIAL_USERS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -16,13 +17,17 @@ const Users = () => {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const userTableRef = useRef();
 
-  // 글로벌 검색 이벤트 리스너
+  const canCreateUsers = hasPermission(currentUserRole, PERMISSIONS.CREATE_USERS);
+  const canEditUsers = hasPermission(currentUserRole, PERMISSIONS.EDIT_USERS);
+  const canDeleteUsers = hasPermission(currentUserRole, PERMISSIONS.DELETE_USERS);
+  const canBulkActions = hasPermission(currentUserRole, PERMISSIONS.BULK_ACTIONS);
+  const canExportData = hasPermission(currentUserRole, PERMISSIONS.EXPORT_DATA);
+
   useEffect(() => {
     const handleGlobalSearch = (event) => {
       const { searchTerm } = event.detail;
       setGlobalSearchTerm(searchTerm);
-      
-      // UserTable 컴포넌트에 검색어 전달
+
       if (userTableRef.current && userTableRef.current.setExternalSearch) {
         userTableRef.current.setExternalSearch(searchTerm);
       }
@@ -33,16 +38,28 @@ const Users = () => {
   }, []);
 
   const handleCreateUser = () => {
+    if (!canCreateUsers) {
+      alert('You do not have permission to create users.');
+      return;
+    }
     setEditingUser(null);
     setIsModalOpen(true);
   };
 
   const handleEditUser = (user) => {
+    if (!canEditUsers) {
+      alert('You do not have permission to edit users.');
+      return;
+    }
     setEditingUser(user);
     setIsModalOpen(true);
   };
 
   const handleDeleteUser = (userId) => {
+    if (!canDeleteUsers) {
+      alert('You do not have permission to delete users.');
+      return;
+    }
     setDeleteConfirm(userId);
   };
 
@@ -53,14 +70,12 @@ const Users = () => {
 
   const handleSubmitUser = (userData) => {
     if (editingUser) {
-      // Update existing user
-      setUsers(users.map(user => 
-        user.id === editingUser.id 
+      setUsers(users.map(user =>
+        user.id === editingUser.id
           ? { ...userData, id: editingUser.id }
           : user
       ));
     } else {
-      // Create new user
       const newUser = {
         ...userData,
         id: Math.max(...users.map(u => u.id)) + 1,
@@ -68,7 +83,7 @@ const Users = () => {
       };
       setUsers([...users, newUser]);
     }
-    
+
     setIsModalOpen(false);
     setEditingUser(null);
   };
@@ -110,27 +125,63 @@ const Users = () => {
             Manage your application users and their permissions.
           </p>
         </div>
-        <Button onClick={handleCreateUser}>
-          <Plus size={20} />
-          Add User
-        </Button>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap'
+        }}>
+          {canExportData && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const csvContent = "data:text/csv;charset=utf-8,"
+                  + "Name,Email,Role,Status,Created\n"
+                  + users.map(user =>
+                    `${user.name},${user.email},${user.role},${user.status},${user.createdAt}`
+                  ).join("\n");
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "users.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              Export CSV
+            </Button>
+          )}
+
+          {canCreateUsers && (
+            <Button onClick={handleCreateUser}>
+              <Plus size={20} />
+              Add User
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
         <Card.Content style={{ padding: 0 }}>
           <div style={{ padding: '1.5rem' }}>
+            {/* ✅ UserTable 호출 부분 수정 */}
             <UserTable
               ref={userTableRef}
               users={users}
               onEdit={handleEditUser}
               onDelete={handleDeleteUser}
               initialSearchTerm={globalSearchTerm}
+              currentUserRole={currentUserRole}
+              canEdit={canEditUsers}
+              canDelete={canDeleteUsers}
             />
           </div>
         </Card.Content>
       </Card>
 
-      {/* Create/Edit User Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -144,7 +195,6 @@ const Users = () => {
         />
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}

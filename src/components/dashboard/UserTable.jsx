@@ -3,7 +3,15 @@ import { Edit2, Trash2, Search } from 'lucide-react';
 import Table from '../ui/Table';
 import Button from '../ui/Button';
 
-const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' }, ref) => {
+const UserTable = forwardRef(({ 
+  users, 
+  onEdit, 
+  onDelete, 
+  initialSearchTerm = '',
+  currentUserRole,
+  canEdit = true,
+  canDelete = true
+}, ref) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
@@ -318,20 +326,35 @@ const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' 
                   <Table.Cell>{user.createdAt}</Table.Cell>
                   <Table.Cell>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(user)}
-                      >
-                        <Edit2 size={16} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(user.id)}
-                      >
-                        <Trash2 size={16} style={{ color: 'var(--color-error)' }} />
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(user)}
+                          title="Edit User"
+                        >
+                          <Edit2 size={16} />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(user.id)}
+                          title="Delete User"
+                        >
+                          <Trash2 size={16} style={{ color: 'var(--color-error)' }} />
+                        </Button>
+                      )}
+                      {!canEdit && !canDelete && (
+                        <span style={{ 
+                          color: 'var(--text-secondary)', 
+                          fontSize: '0.875rem',
+                          fontStyle: 'italic'
+                        }}>
+                          View Only
+                        </span>
+                      )}
                     </div>
                   </Table.Cell>
                 </Table.Row>
