@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart3, Users, X } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '../../utils/constants';
 
@@ -8,6 +8,17 @@ const iconMap = {
 };
 
 const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleNavigation = (pageId) => {
     setCurrentPage(pageId);
     onClose();
@@ -16,7 +27,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && (
+      {isOpen && !isDesktop && (
         <div 
           onClick={onClose}
           style={{
@@ -31,44 +42,54 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
       {/* Sidebar */}
       <div style={{
         position: 'fixed',
-        insetY: 0,
+        top: '64px', // 헤더 높이만큼 아래에서 시작
         left: 0,
-        zIndex: 50,
+        bottom: 0,
         width: '256px',
         backgroundColor: 'var(--bg-primary)',
         borderRight: '1px solid var(--border-color)',
-        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease-in-out'
+        transform: (isDesktop || isOpen) ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease-in-out',
+        zIndex: 30,
+        overflowY: 'auto'
       }}>
-        <div 
-          className="flex items-center justify-between p-4"
-          style={{
-            borderBottom: '1px solid var(--border-color)',
-            display: 'none'
-          }}
-        >
-          <h2 style={{
-            fontSize: '1.125rem',
-            fontWeight: '600',
-            color: 'var(--text-primary)'
-          }}>
-            Menu
-          </h2>
-          <button
-            onClick={onClose}
-            className="btn"
+        {/* Mobile header - 모바일에서만 표시 */}
+        {!isDesktop && (
+          <div 
             style={{
-              padding: '0.5rem',
-              borderRadius: '0.375rem',
-              color: 'var(--text-secondary)',
-              backgroundColor: 'transparent'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1rem',
+              borderBottom: '1px solid var(--border-color)'
             }}
           >
-            <X size={20} />
-          </button>
-        </div>
+            <h2 style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: 'var(--text-primary)',
+              margin: 0
+            }}>
+              Menu
+            </h2>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '0.375rem',
+                color: 'var(--text-secondary)',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
 
-        <nav style={{ marginTop: '2rem', padding: '0 1rem' }}>
+        {/* Navigation */}
+        <nav style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {NAVIGATION_ITEMS.map((item) => {
               const Icon = iconMap[item.icon];
@@ -78,7 +99,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                 <button
                   key={item.id}
                   onClick={() => handleNavigation(item.id)}
-                  className="btn"
                   style={{
                     width: '100%',
                     display: 'flex',
@@ -91,6 +111,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                     backgroundColor: isActive ? 'var(--color-primary)' : 'transparent',
                     color: isActive ? 'white' : 'var(--text-primary)',
                     border: 'none',
+                    cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
@@ -112,6 +133,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
           </div>
         </nav>
 
+        {/* Version info - 하단 고정 */}
         <div style={{
           position: 'absolute',
           bottom: '1rem',
@@ -126,33 +148,21 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
             <p style={{
               fontSize: '0.75rem',
               color: 'var(--text-secondary)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.25rem',
+              margin: 0
             }}>
               Version 1.0.0
             </p>
             <p style={{
               fontSize: '0.75rem',
-              color: 'var(--text-secondary)'
+              color: 'var(--text-secondary)',
+              margin: 0
             }}>
               Built with React
             </p>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @media (max-width: 1024px) {
-          .flex:first-child {
-            display: flex !important;
-          }
-        }
-        @media (min-width: 1024px) {
-          div[style*="position: fixed"] {
-            position: static !important;
-            transform: none !important;
-          }
-        }
-      `}</style>
     </>
   );
 };

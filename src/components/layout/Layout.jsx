@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 
 const Layout = ({ children, currentPage, setCurrentPage }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
@@ -12,7 +22,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
         sidebarOpen={sidebarOpen}
       />
       
-      <div className="flex">
+      <div style={{ display: 'flex' }}>
         <Sidebar 
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
@@ -21,9 +31,10 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
         />
         
         <main 
-          className="p-6"
           style={{
             flex: 1,
+            padding: '1.5rem',
+            marginLeft: isMobile ? '0' : '256px', // 반응형 마진
             transition: 'all 0.3s ease'
           }}
         >
