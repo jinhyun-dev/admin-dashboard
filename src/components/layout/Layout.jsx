@@ -20,6 +20,8 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
       <Header 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         sidebarOpen={sidebarOpen}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
       />
       
       <div style={{ display: 'flex' }}>
@@ -34,7 +36,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           style={{
             flex: 1,
             padding: '1.5rem',
-            marginLeft: isMobile ? '0' : '256px', // 반응형 마진
+            marginLeft: isMobile ? '0' : '256px',
             transition: 'all 0.3s ease'
           }}
         >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import UserTable from '../components/dashboard/UserTable';
 import UserForm from '../components/dashboard/UserForm';
@@ -13,6 +13,24 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const userTableRef = useRef();
+
+  // 글로벌 검색 이벤트 리스너
+  useEffect(() => {
+    const handleGlobalSearch = (event) => {
+      const { searchTerm } = event.detail;
+      setGlobalSearchTerm(searchTerm);
+      
+      // UserTable 컴포넌트에 검색어 전달
+      if (userTableRef.current && userTableRef.current.setExternalSearch) {
+        userTableRef.current.setExternalSearch(searchTerm);
+      }
+    };
+
+    window.addEventListener('globalSearch', handleGlobalSearch);
+    return () => window.removeEventListener('globalSearch', handleGlobalSearch);
+  }, []);
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -75,6 +93,16 @@ const Users = () => {
             marginBottom: '0.5rem'
           }}>
             Users
+            {globalSearchTerm && (
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: 'normal',
+                color: 'var(--text-secondary)',
+                marginLeft: '1rem'
+              }}>
+                - Search results for "{globalSearchTerm}"
+              </span>
+            )}
           </h1>
           <p style={{
             color: 'var(--text-secondary)'
@@ -92,9 +120,11 @@ const Users = () => {
         <Card.Content style={{ padding: 0 }}>
           <div style={{ padding: '1.5rem' }}>
             <UserTable
+              ref={userTableRef}
               users={users}
               onEdit={handleEditUser}
               onDelete={handleDeleteUser}
+              initialSearchTerm={globalSearchTerm}
             />
           </div>
         </Card.Content>

@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Edit2, Trash2, Search } from 'lucide-react';
 import Table from '../ui/Table';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 
-const UserTable = ({ users, onEdit, onDelete }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const UserTable = forwardRef(({ users, onEdit, onDelete, initialSearchTerm = '' }, ref) => {
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // 외부에서 검색어를 설정할 수 있도록 하는 함수
+  useImperativeHandle(ref, () => ({
+    setExternalSearch: (term) => {
+      setSearchTerm(term);
+      setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    }
+  }));
+
+  // 글로벌 검색 이벤트 리스너
+  useEffect(() => {
+    const handleGlobalSearch = (event) => {
+      const { searchTerm: globalSearchTerm } = event.detail;
+      setSearchTerm(globalSearchTerm);
+      setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    };
+
+    window.addEventListener('globalSearch', handleGlobalSearch);
+    return () => window.removeEventListener('globalSearch', handleGlobalSearch);
+  }, []);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -35,6 +55,23 @@ const UserTable = ({ users, onEdit, onDelete }) => {
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  const handleLocalSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
+    
+    // 글로벌 검색도 클리어
+    const searchEvent = new CustomEvent('globalSearch', {
+      detail: { searchTerm: '' }
+    });
+    window.dispatchEvent(searchEvent);
   };
 
   const StatusBadge = ({ status }) => (
@@ -65,7 +102,7 @@ const UserTable = ({ users, onEdit, onDelete }) => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '256px' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
           <Search 
             size={20} 
             style={{
@@ -73,22 +110,74 @@ const UserTable = ({ users, onEdit, onDelete }) => {
               left: '0.75rem',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--text-secondary)'
+              color: 'var(--text-secondary)',
+              pointerEvents: 'none'
             }}
           />
-          <Input
+          <input
             type="text"
             placeholder="Search users..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: '2.5rem' }}
+            onChange={handleLocalSearchChange}
+            style={{
+              width: '100%',
+              paddingLeft: '2.5rem',
+              paddingRight: searchTerm ? '2.5rem' : '0.75rem',
+              padding: '0.5rem 0.75rem',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              fontSize: '0.875rem',
+              outline: 'none'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)';
+              e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border-color)';
+              e.target.style.boxShadow = 'none';
+            }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              style={{
+                position: 'absolute',
+                right: '0.75rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontSize: '1.25rem',
+                lineHeight: 1,
+                padding: '0.25rem'
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
+        
         <div style={{
           fontSize: '0.875rem',
-          color: 'var(--text-secondary)'
+          color: 'var(--text-secondary)',
+          textAlign: 'center'
         }}>
-          {filteredUsers.length} users found
+          {searchTerm ? (
+            <>
+              <span style={{ fontWeight: '500' }}>{filteredUsers.length}</span> users found
+              {searchTerm && (
+                <span> for "<span style={{ fontWeight: '500', color: 'var(--color-primary)' }}>{searchTerm}</span>"</span>
+              )}
+            </>
+          ) : (
+            <><span style={{ fontWeight: '500' }}>{filteredUsers.length}</span> total users</>
+          )}
         </div>
       </div>
 
@@ -175,72 +264,102 @@ const UserTable = ({ users, onEdit, onDelete }) => {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {paginatedUsers.map((user) => (
-              <Table.Row key={user.id}>
-                <Table.Cell>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div style={{
-                      height: '32px',
-                      width: '32px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: '0.75rem'
-                    }}>
-                      <span style={{
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        color: 'white'
+            {paginatedUsers.length > 0 ? (
+              paginatedUsers.map((user) => (
+                <Table.Row key={user.id}>
+                  <Table.Cell>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{
+                        height: '32px',
+                        width: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--color-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '0.75rem'
                       }}>
-                        {user.name.charAt(0).toUpperCase()}
+                        <span style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          color: 'white'
+                        }}>
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                        {user.name}
                       </span>
                     </div>
-                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
-                      {user.name}
+                  </Table.Cell>
+                  <Table.Cell>{user.email}</Table.Cell>
+                  <Table.Cell>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.625rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: '500',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      color: 'var(--color-primary)'
+                    }}>
+                      {user.role}
                     </span>
-                  </div>
-                </Table.Cell>
-                <Table.Cell>{user.email}</Table.Cell>
-                <Table.Cell>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.75rem',
-                    fontWeight: '500',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    color: 'var(--color-primary)'
-                  }}>
-                    {user.role}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  <StatusBadge status={user.status} />
-                </Table.Cell>
-                <Table.Cell>{user.createdAt}</Table.Cell>
-                <Table.Cell>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(user)}
-                    >
-                      <Edit2 size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(user.id)}
-                    >
-                      <Trash2 size={16} style={{ color: 'var(--color-error)' }} />
-                    </Button>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <StatusBadge status={user.status} />
+                  </Table.Cell>
+                  <Table.Cell>{user.createdAt}</Table.Cell>
+                  <Table.Cell>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(user)}
+                      >
+                        <Edit2 size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(user.id)}
+                      >
+                        <Trash2 size={16} style={{ color: 'var(--color-error)' }} />
+                      </Button>
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              ))
+            ) : (
+              <Table.Row>
+                <Table.Cell colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    {searchTerm ? (
+                      <>
+                        No users found for "<span style={{ fontWeight: '500' }}>{searchTerm}</span>"
+                        <br />
+                        <button
+                          onClick={clearSearch}
+                          style={{
+                            marginTop: '0.5rem',
+                            color: 'var(--color-primary)',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          Clear search
+                        </button>
+                      </>
+                    ) : (
+                      'No users available'
+                    )}
                   </div>
                 </Table.Cell>
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table>
       </div>
@@ -285,6 +404,8 @@ const UserTable = ({ users, onEdit, onDelete }) => {
       )}
     </div>
   );
-};
+});
+
+UserTable.displayName = 'UserTable';
 
 export default UserTable;
