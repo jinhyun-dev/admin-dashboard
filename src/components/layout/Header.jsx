@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPage }) => {
   const { theme, toggleTheme } = useTheme();
-  const { updateUserRole } = useAuth();
+  const { currentUser, updateUserRole, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
   const [searchValue, setSearchValue] = useState('');
@@ -14,16 +14,6 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-
-  // 사용자 프로필 데이터
-  const [userProfile, setUserProfile] = useState({
-    name: 'Admin User',
-    email: 'admin@example.com',
-    avatar: 'A',
-    role: 'Administrator',
-    joinDate: '2024-01-01',
-    lastLogin: new Date().toLocaleString()
-  });
 
   // 설정 데이터 (Language 제거)
   const [settings, setSettings] = useState({
@@ -109,7 +99,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     setShowNotifications(false);
   };
 
-  const handleUserMenuAction = (action) => {
+  const handleUserMenuAction = async (action) => {
     setShowUserMenu(false);
     
     switch (action) {
@@ -121,9 +111,12 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
         break;
       case 'logout':
         if (window.confirm('Are you sure you want to sign out?')) {
-          // 로그아웃 로직
-          localStorage.removeItem('users');
-          window.location.reload();
+          try {
+            await logout();
+          } catch (error) {
+            console.error('Logout error:', error);
+            alert('Failed to logout. Please try again.');
+          }
         }
         break;
       default:
@@ -132,7 +125,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   };
 
   const handleProfileSave = (updatedProfile) => {
-    setUserProfile(updatedProfile);
+    // Firebase를 통해 프로필 업데이트 로직이 필요하면 여기에 추가
     setShowProfileModal(false);
     alert('Profile updated successfully!');
   };
@@ -430,7 +423,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       fontWeight: '500',
                       color: 'white'
                     }}>
-                      {userProfile.avatar}
+                      {currentUser?.avatar || currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
                   
@@ -442,14 +435,14 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                         color: 'var(--text-primary)',
                         margin: 0
                       }}>
-                        {userProfile.name}
+                        {currentUser?.name || 'Unknown User'}
                       </p>
                       <p style={{
                         fontSize: '0.75rem',
                         color: 'var(--text-secondary)',
                         margin: 0
                       }}>
-                        {userProfile.email}
+                        {currentUser?.email || 'No Email'}
                       </p>
                     </div>
                   )}
@@ -478,14 +471,14 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                         color: 'var(--text-primary)',
                         margin: 0
                       }}>
-                        {userProfile.name}
+                        {currentUser?.name || 'Unknown User'}
                       </p>
                       <p style={{
                         fontSize: '0.75rem',
                         color: 'var(--text-secondary)',
                         margin: 0
                       }}>
-                        {userProfile.email}
+                        {currentUser?.email || 'No Email'}
                       </p>
                     </div>
                     
@@ -565,7 +558,6 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                           key={role}
                           onClick={() => {
                             updateUserRole(role);
-                            setUserProfile(prev => ({ ...prev, role }));
                             setShowUserMenu(false);
                             alert(`Role switched to: ${role}`);
                           }}
@@ -573,8 +565,8 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                             width: '100%',
                             padding: '0.5rem 0.75rem',
                             fontSize: '0.875rem',
-                            color: userProfile.role === role ? 'var(--color-primary)' : 'var(--text-primary)',
-                            backgroundColor: userProfile.role === role ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            color: currentUser?.role === role ? 'var(--color-primary)' : 'var(--text-primary)',
+                            backgroundColor: currentUser?.role === role ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                             border: 'none',
                             borderRadius: '0.25rem',
                             cursor: 'pointer',
@@ -582,12 +574,12 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                             marginBottom: '0.25rem'
                           }}
                           onMouseEnter={(e) => {
-                            if (userProfile.role !== role) {
+                            if (currentUser?.role !== role) {
                               e.target.style.backgroundColor = 'var(--bg-secondary)';
                             }
                           }}
                           onMouseLeave={(e) => {
-                            if (userProfile.role !== role) {
+                            if (currentUser?.role !== role) {
                               e.target.style.backgroundColor = 'transparent';
                             } else {
                               e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
@@ -690,7 +682,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
             </div>
             
             <ProfileForm 
-              profile={userProfile}
+              profile={currentUser}
               onSave={handleProfileSave}
               onCancel={() => setShowProfileModal(false)}
             />
@@ -764,7 +756,11 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
 
 // Profile Form Component
 const ProfileForm = ({ profile, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(profile);
+  const [formData, setFormData] = useState({
+    name: profile?.name || '',
+    email: profile?.email || '',
+    role: profile?.role || ''
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();

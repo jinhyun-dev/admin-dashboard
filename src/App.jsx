@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import DashboardOverview from './components/dashboard/DashboardOverview';
+import LoginPage from './components/auth/LoginPage';
 import { useAuth } from './hooks/useAuth';
 import { canAccessPage } from './utils/permissions';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -15,21 +16,6 @@ function App() {
   const [users] = useLocalStorage('users', INITIAL_USERS);
 
   const renderPage = () => {
-    // 로딩 중일 때
-    if (isLoading) {
-      return (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '50vh',
-          color: 'var(--text-secondary)'
-        }}>
-          Loading...
-        </div>
-      );
-    }
-
     // 권한 체크
     if (!canAccessPage(currentUser?.role, currentPage)) {
       return (
@@ -76,6 +62,33 @@ function App() {
     }
   };
 
+  // 로딩 중
+  if (isLoading) {
+    return (
+      <ThemeProvider>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          backgroundColor: 'var(--bg-secondary)'
+        }}>
+          <div style={{ color: 'var(--text-primary)' }}>Loading...</div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // 로그인하지 않은 경우
+  if (!currentUser) {
+    return (
+      <ThemeProvider>
+        <LoginPage />
+      </ThemeProvider>
+    );
+  }
+
+  // 기존 로그인된 사용자 UI
   return (
     <ThemeProvider>
       <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>

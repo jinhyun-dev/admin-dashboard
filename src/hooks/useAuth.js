@@ -1,56 +1,40 @@
-import { useState, useEffect } from 'react';
-import { ROLES } from '../utils/permissions';
+// hooks/useAuth.js (수정된 버전)
+import { useFirebaseAuth } from './useFirebaseAuth';
+import { ROLES } from '../utils/permissions'; 
 
+// Firebase 인증을 사용하는 useAuth 훅
 export const useAuth = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    user,
+    loading,
+    error,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    logout,
+    updateUserRole,
+    clearError
+  } = useFirebaseAuth();
 
-  useEffect(() => {
-    // 로컬 스토리지에서 현재 사용자 정보 가져오기
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Failed to parse user data:', error);
-        // 기본 사용자 설정
-        setDefaultUser();
-      }
-    } else {
-      // 기본 사용자 설정
-      setDefaultUser();
-    }
-    setIsLoading(false);
-  }, []);
-
-  const setDefaultUser = () => {
-    const defaultUser = {
-      id: 1,
-      name: 'Admin User',
-      email: 'admin@example.com',
-      role: ROLES.SUPER_ADMIN,
-      avatar: 'A'
-    };
-    setCurrentUser(defaultUser);
-    localStorage.setItem('currentUser', JSON.stringify(defaultUser));
-  };
-
-  const updateUserRole = (newRole) => {
-    const updatedUser = { ...currentUser, role: newRole };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-  };
-
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('users');
-  };
+  // 기존 인터페이스와 호환성 유지
+  const currentUser = user ? {
+    id: user.uid,  // 기존: id, Firebase: uid
+    name: user.displayName || 'Unknown User',
+    email: user.email,
+    role: user.role,
+    avatar: user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U',
+    photoURL: user.photoURL
+  } : null;
 
   return {
     currentUser,
-    isLoading,
-    updateUserRole,
-    logout
+    isLoading: loading,
+    error, // 새로 추가된 기능
+    signUp, // 새로 추가된 기능
+    signIn, // 새로 추가된 기능
+    signInWithGoogle, // 새로 추가된 기능
+    logout, // 기존 기능과 동일한 이름
+    updateUserRole: (newRole) => updateUserRole(user?.uid, newRole), // 기존 기능 유지
+    clearError // 새로 추가된 기능
   };
 };
