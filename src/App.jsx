@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
@@ -7,13 +7,18 @@ import DashboardOverview from './components/dashboard/DashboardOverview';
 import LoginPage from './components/auth/LoginPage';
 import { useAuth } from './hooks/useAuth';
 import { canAccessPage } from './utils/permissions';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { INITIAL_USERS } from './utils/constants';
+import { migrateInitialUsers } from './utils/migrateData';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const { currentUser, isLoading } = useAuth();
-  const [users] = useLocalStorage('users', INITIAL_USERS);
+
+  // 마이그레이션 실행 (한 번만)
+  useEffect(() => {
+    if (currentUser) {
+      migrateInitialUsers();
+    }
+  }, [currentUser]);
 
   const renderPage = () => {
     // 권한 체크
@@ -54,11 +59,11 @@ function App() {
 
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardOverview users={users} />;
+        return <DashboardOverview />;
       case 'users':
         return <Users currentUserRole={currentUser?.role} />;
       default:
-        return <DashboardOverview users={users} />;
+        return <DashboardOverview />;
     }
   };
 

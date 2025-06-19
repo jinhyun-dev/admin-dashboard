@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserCheck, UserPlus, Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { useUsers } from '../../hooks/useFirestore';
 
-const DashboardOverview = ({ users }) => {
+const DashboardOverview = () => {
+  const { users, loading } = useUsers();
+  
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -141,6 +144,20 @@ const DashboardOverview = ({ users }) => {
       </div>
     </div>
   );
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '50vh',
+        color: 'var(--text-secondary)'
+      }}>
+        Loading dashboard data...
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '2rem', backgroundColor: 'var(--bg-secondary)', minHeight: '100vh' }}>

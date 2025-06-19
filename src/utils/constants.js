@@ -32,7 +32,7 @@ export const INITIAL_USERS = [
     id: 3,
     name: 'Mike Johnson',
     email: 'mike.johnson@example.com',
-    role: 'Moderator',
+    role: 'Manager',
     status: 'inactive',
     createdAt: '2024-01-17'
   },
@@ -54,5 +54,5 @@ export const INITIAL_USERS = [
   }
 ];
 
-export const USER_ROLES = ['Admin', 'Moderator', 'User'];
+export const USER_ROLES = ['Super Admin', 'Admin', 'Manager', 'User', 'Viewer']; // 권한 시스템과 통일
 export const USER_STATUSES = ['active', 'inactive'];

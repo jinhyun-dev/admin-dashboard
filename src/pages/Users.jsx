@@ -5,12 +5,22 @@ import UserForm from '../components/dashboard/UserForm';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { INITIAL_USERS } from '../utils/constants';
+import { useUsers } from '../hooks/useFirestore';
 import { hasPermission, PERMISSIONS } from '../utils/permissions';
+import { useToast, ToastContainer } from '../components/ui/Toast';
 
 const Users = ({ currentUserRole }) => {
-  const [users, setUsers] = useLocalStorage('users', INITIAL_USERS);
+  const { toasts, addToast, removeToast } = useToast();
+  
+  const {
+    users,
+    loading,
+    error,
+    createUser,
+    updateUser,
+    deleteUser
+  } = useUsers();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -39,7 +49,7 @@ const Users = ({ currentUserRole }) => {
 
   const handleCreateUser = () => {
     if (!canCreateUsers) {
-      alert('You do not have permission to create users.');
+      addToast('You do not have permission to create users.', 'error');
       return;
     }
     setEditingUser(null);
@@ -48,7 +58,7 @@ const Users = ({ currentUserRole }) => {
 
   const handleEditUser = (user) => {
     if (!canEditUsers) {
-      alert('You do not have permission to edit users.');
+      addToast('You do not have permission to edit users.', 'error');
       return;
     }
     setEditingUser(user);
@@ -57,41 +67,90 @@ const Users = ({ currentUserRole }) => {
 
   const handleDeleteUser = (userId) => {
     if (!canDeleteUsers) {
-      alert('You do not have permission to delete users.');
+      addToast('You do not have permission to delete users.', 'error');
       return;
     }
     setDeleteConfirm(userId);
   };
 
-  const confirmDelete = () => {
-    setUsers(users.filter(user => user.id !== deleteConfirm));
-    setDeleteConfirm(null);
+  const confirmDelete = async () => {
+    try {
+      await deleteUser(deleteConfirm);
+      addToast('User deleted successfully!', 'success');
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+      addToast('Delete failed. Please try again.', 'error');
+    }
   };
 
-  const handleSubmitUser = (userData) => {
-    if (editingUser) {
-      setUsers(users.map(user =>
-        user.id === editingUser.id
-          ? { ...userData, id: editingUser.id }
-          : user
-      ));
-    } else {
-      const newUser = {
-        ...userData,
-        id: Math.max(...users.map(u => u.id)) + 1,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setUsers([...users, newUser]);
+  const handleSubmitUser = async (userData) => {
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, userData);
+        addToast('User updated successfully!', 'success');
+      } else {
+        await createUser(userData);
+        addToast('User created successfully!', 'success');
+      }
+      
+      setIsModalOpen(false);
+      setEditingUser(null);
+    } catch (error) {
+      console.error('User operation failed:', error);
+      addToast('Operation failed. Please try again.', 'error');
     }
-
-    setIsModalOpen(false);
-    setEditingUser(null);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
   };
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '50vh',
+        color: 'var(--text-secondary)'
+      }}>
+        Loading users...
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '50vh',
+        color: 'var(--color-error)'
+      }}>
+        <p>Error loading users: {error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '1rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: 'var(--color-primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            cursor: 'pointer'
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -149,6 +208,8 @@ const Users = ({ currentUserRole }) => {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                
+                addToast('CSV exported successfully!', 'success');
               }}
             >
               Export CSV
@@ -167,7 +228,6 @@ const Users = ({ currentUserRole }) => {
       <Card>
         <Card.Content style={{ padding: 0 }}>
           <div style={{ padding: '1.5rem' }}>
-            {/* ✅ UserTable 호출 부분 수정 */}
             <UserTable
               ref={userTableRef}
               users={users}
@@ -229,6 +289,8 @@ const Users = ({ currentUserRole }) => {
           </div>
         </div>
       </Modal>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };
