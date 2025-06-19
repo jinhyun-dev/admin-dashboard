@@ -1,4 +1,5 @@
 // hooks/useAuth.js (수정된 버전)
+import { useMemo, useCallback } from 'react';
 import { useFirebaseAuth } from './useFirebaseAuth';
 import { ROLES } from '../utils/permissions'; 
 
@@ -16,25 +17,43 @@ export const useAuth = () => {
     clearError
   } = useFirebaseAuth();
 
-  // 기존 인터페이스와 호환성 유지
-  const currentUser = user ? {
-    id: user.uid,  // 기존: id, Firebase: uid
-    name: user.displayName || 'Unknown User',
-    email: user.email,
-    role: user.role,
-    avatar: user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U',
-    photoURL: user.photoURL
-  } : null;
+  // useMemo를 사용하여 currentUser 객체가 role 변경 시 새로 생성되도록 함
+  const currentUser = useMemo(() => {
+    if (!user) return null;
+    
+    const userObj = {
+      id: user.uid,
+      name: user.displayName || 'Unknown User',
+      email: user.email,
+      role: user.role,
+      avatar: user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U',
+      photoURL: user.photoURL
+    };
+    
+    console.log('useAuth - currentUser created with role:', userObj.role);
+    return userObj;
+  }, [user?.uid, user?.displayName, user?.email, user?.role, user?.photoURL]);
+
+  // updateUserRole 함수를 useCallback으로 감싸기
+  const handleUpdateUserRole = useCallback(async (newRole) => {
+    console.log('useAuth - updateUserRole called with:', newRole);
+    await updateUserRole(user?.uid, newRole);
+    console.log('useAuth - updateUserRole completed');
+  }, [updateUserRole, user?.uid]);
+
+  // 디버깅을 위한 콘솔 로그
+  console.log('useAuth - currentUser:', currentUser);
+  console.log('useAuth - user.role:', user?.role);
 
   return {
     currentUser,
     isLoading: loading,
-    error, // 새로 추가된 기능
-    signUp, // 새로 추가된 기능
-    signIn, // 새로 추가된 기능
-    signInWithGoogle, // 새로 추가된 기능
-    logout, // 기존 기능과 동일한 이름
-    updateUserRole: (newRole) => updateUserRole(user?.uid, newRole), // 기존 기능 유지
-    clearError // 새로 추가된 기능
+    error,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    logout,
+    updateUserRole: handleUpdateUserRole,
+    clearError
   };
 };

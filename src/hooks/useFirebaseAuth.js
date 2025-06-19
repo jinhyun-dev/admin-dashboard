@@ -23,14 +23,17 @@ export const useFirebaseAuth = () => {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         const userData = userDoc.exists() ? userDoc.data() : {};
         
-        setUser({
+        const enrichedUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
           role: userData.role || ROLES.USER, // 기본 역할
           ...userData
-        });
+        };
+        
+        console.log('useFirebaseAuth - Setting user:', enrichedUser);
+        setUser(enrichedUser);
       } else {
         setUser(null);
       }
@@ -129,21 +132,32 @@ export const useFirebaseAuth = () => {
     }
   };
 
-  // 사용자 역할 업데이트 (관리자 전용)
+  // 사용자 역할 업데이트 (관리자 전용) - 수정된 버전
   const updateUserRole = async (userId, newRole) => {
     try {
       setError(null);
+      console.log('updateUserRole called:', { userId, newRole, currentUserId: user?.uid });
       
+      // Firestore 업데이트
       await setDoc(doc(db, 'users', userId), {
         role: newRole,
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
-      // 현재 사용자의 역할이 업데이트되었다면 상태 갱신
+      console.log('Firestore updated successfully');
+      
+      // 현재 사용자의 역할이 업데이트되었다면 상태 즉시 갱신
       if (userId === user?.uid) {
-        setUser(prev => ({ ...prev, role: newRole }));
+        console.log('Updating current user role from', user.role, 'to', newRole);
+        setUser(prev => ({ 
+          ...prev, 
+          role: newRole,
+          updatedAt: new Date().toISOString()
+        }));
+        console.log('User state updated');
       }
     } catch (error) {
+      console.error('updateUserRole error:', error);
       setError(error.message);
       throw error;
     }

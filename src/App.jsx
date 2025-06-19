@@ -10,8 +10,17 @@ import { canAccessPage } from './utils/permissions';
 import { migrateInitialUsers } from './utils/migrateData';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  // localStorage에서 마지막 페이지 정보를 가져와서 초기값으로 설정
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem('currentPage') || 'dashboard';
+  });
+  
   const { currentUser, isLoading } = useAuth();
+
+  // 페이지가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('currentPage', currentPage);
+  }, [currentPage]);
 
   // 마이그레이션 실행 (한 번만)
   useEffect(() => {
@@ -61,7 +70,7 @@ function App() {
       case 'dashboard':
         return <DashboardOverview />;
       case 'users':
-        return <Users currentUserRole={currentUser?.role} />;
+        return <Users />;
       default:
         return <DashboardOverview />;
     }

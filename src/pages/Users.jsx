@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useReducer } from 'react';
 import { Plus } from 'lucide-react';
 import UserTable from '../components/dashboard/UserTable';
 import UserForm from '../components/dashboard/UserForm';
@@ -8,9 +8,14 @@ import Card from '../components/ui/Card';
 import { useUsers } from '../hooks/useFirestore';
 import { hasPermission, PERMISSIONS } from '../utils/permissions';
 import { useToast, ToastContainer } from '../components/ui/Toast';
+import { useAuth } from '../hooks/useAuth';
 
-const Users = ({ currentUserRole }) => {
+const Users = () => {
   const { toasts, addToast, removeToast } = useToast();
+  const { currentUser } = useAuth();
+  
+  // 강제 리렌더링을 위한 reducer
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
   
   const {
     users,
@@ -25,13 +30,38 @@ const Users = ({ currentUserRole }) => {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const [currentRole, setCurrentRole] = useState(currentUser?.role); // 현재 역할 추적
   const userTableRef = useRef();
 
-  const canCreateUsers = hasPermission(currentUserRole, PERMISSIONS.CREATE_USERS);
-  const canEditUsers = hasPermission(currentUserRole, PERMISSIONS.EDIT_USERS);
-  const canDeleteUsers = hasPermission(currentUserRole, PERMISSIONS.DELETE_USERS);
-  const canBulkActions = hasPermission(currentUserRole, PERMISSIONS.BULK_ACTIONS);
-  const canExportData = hasPermission(currentUserRole, PERMISSIONS.EXPORT_DATA);
+  // currentUser.role이 변경될 때 감지하고 강제 리렌더링
+  useEffect(() => {
+    if (currentUser?.role && currentUser.role !== currentRole) {
+      console.log('Users component - Role changed from', currentRole, 'to', currentUser.role);
+      setCurrentRole(currentUser.role);
+      forceUpdate(); // 강제 리렌더링
+    }
+  }, [currentUser?.role, currentRole]);
+
+  // useMemo를 사용하여 권한 계산을 최적화하고 의존성을 명확히 함
+  const permissions = useMemo(() => {
+    const role = currentUser?.role;
+    console.log('Users component - calculating permissions for role:', role);
+    
+    return {
+      canCreateUsers: hasPermission(role, PERMISSIONS.CREATE_USERS),
+      canEditUsers: hasPermission(role, PERMISSIONS.EDIT_USERS),
+      canDeleteUsers: hasPermission(role, PERMISSIONS.DELETE_USERS),
+      canBulkActions: hasPermission(role, PERMISSIONS.BULK_ACTIONS),
+      canExportData: hasPermission(role, PERMISSIONS.EXPORT_DATA)
+    };
+  }, [currentUser?.role, currentRole]); // currentRole도 의존성에 추가
+
+  const { canCreateUsers, canEditUsers, canDeleteUsers, canBulkActions, canExportData } = permissions;
+
+  // 디버깅용 로그
+  console.log('Users component render - currentUser:', currentUser);
+  console.log('Users component render - currentRole state:', currentRole);
+  console.log('Users component render - permissions:', permissions);
 
   useEffect(() => {
     const handleGlobalSearch = (event) => {
@@ -153,7 +183,7 @@ const Users = ({ currentUserRole }) => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div key={currentRole} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -182,6 +212,14 @@ const Users = ({ currentUserRole }) => {
             color: 'var(--text-secondary)'
           }}>
             Manage your application users and their permissions.
+          </p>
+          {/* 디버깅 정보 표시 */}
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '0.75rem',
+            marginTop: '0.5rem'
+          }}>
+            Current Role: {currentRole} | Original Role: {currentUser?.role} | Can Create: {canCreateUsers ? 'Yes' : 'No'} | Can Edit: {canEditUsers ? 'Yes' : 'No'}
           </p>
         </div>
 
@@ -229,12 +267,13 @@ const Users = ({ currentUserRole }) => {
         <Card.Content style={{ padding: 0 }}>
           <div style={{ padding: '1.5rem' }}>
             <UserTable
+              key={`table-${currentRole}`} // 역할 변경 시 테이블도 리렌더링
               ref={userTableRef}
               users={users}
               onEdit={handleEditUser}
               onDelete={handleDeleteUser}
               initialSearchTerm={globalSearchTerm}
-              currentUserRole={currentUserRole}
+              currentUserRole={currentRole} // currentRole 사용
               canEdit={canEditUsers}
               canDelete={canDeleteUsers}
             />

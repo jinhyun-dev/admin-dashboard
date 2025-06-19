@@ -556,10 +556,25 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       {Object.values(ROLES).map((role) => (
                         <button
                           key={role}
-                          onClick={() => {
-                            updateUserRole(role);
-                            setShowUserMenu(false);
-                            alert(`Role switched to: ${role}`);
+                          onClick={async () => {
+                            try {
+                              await updateUserRole(role);
+                              setShowUserMenu(false);
+                              
+                              // 현재 페이지 정보를 localStorage에 저장 (혹시 모를 경우를 대비)
+                              localStorage.setItem('currentPage', currentPage);
+                              
+                              // 역할 변경 알림 및 새로고침
+                              alert(`Role switched to: ${role}`);
+                              
+                              // 잠시 후 자동 새로고침
+                              setTimeout(() => {
+                                window.location.reload();
+                              }, 500);
+                            } catch (error) {
+                              console.error('Role switch failed:', error);
+                              alert('Failed to switch role. Please try again.');
+                            }
                           }}
                           style={{
                             width: '100%',
