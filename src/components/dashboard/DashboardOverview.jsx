@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, UserCheck, UserPlus, Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useUsers } from '../../hooks/useFirestore';
@@ -13,16 +13,32 @@ const DashboardOverview = () => {
     inactiveUsers: 0
   });
 
-  const [chartData, setChartData] = useState({
-    userGrowth: [],
-    roleDistribution: [],
-    monthlyActivity: []
-  });
+  // 고정된 차트 데이터 (Math.random() 제거)
+  const chartData = useMemo(() => ({
+    userGrowth: [
+      { month: 'Jan', users: 42, newUsers: 8 },
+      { month: 'Feb', users: 58, newUsers: 12 },
+      { month: 'Mar', users: 67, newUsers: 9 },
+      { month: 'Apr', users: 78, newUsers: 11 },
+      { month: 'May', users: 89, newUsers: 11 },
+      { month: 'Jun', users: 95, newUsers: 6 }
+    ],
+    monthlyActivity: [
+      { month: 'Jan', logins: 245, registrations: 12 },
+      { month: 'Feb', logins: 289, registrations: 18 },
+      { month: 'Mar', logins: 334, registrations: 15 },
+      { month: 'Apr', logins: 398, registrations: 22 },
+      { month: 'May', logins: 445, registrations: 19 },
+      { month: 'Jun', logins: 478, registrations: 25 }
+    ]
+  }), []); // 빈 의존성 배열로 한 번만 생성
+
+  const [roleDistribution, setRoleDistribution] = useState([]);
 
   useEffect(() => {
     if (users && users.length > 0) {
       calculateStats();
-      generateChartData();
+      generateRoleDistribution();
     }
   }, [users]);
 
@@ -48,15 +64,7 @@ const DashboardOverview = () => {
     });
   };
 
-  const generateChartData = () => {
-    // 사용자 증가 추이 (최근 6개월)
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const userGrowthData = months.map((month, index) => ({
-      month,
-      users: Math.floor(Math.random() * 50) + (index * 10) + 20,
-      newUsers: Math.floor(Math.random() * 15) + 5
-    }));
-
+  const generateRoleDistribution = () => {
     // 역할별 분포
     const roleCounts = users.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1;
@@ -69,21 +77,7 @@ const DashboardOverview = () => {
       percentage: ((count / users.length) * 100).toFixed(1)
     }));
 
-    // 월별 활동 현황
-    const monthlyActivityData = [
-      { month: 'Jan', logins: 245, registrations: 12 },
-      { month: 'Feb', logins: 289, registrations: 18 },
-      { month: 'Mar', logins: 334, registrations: 15 },
-      { month: 'Apr', logins: 398, registrations: 22 },
-      { month: 'May', logins: 445, registrations: 19 },
-      { month: 'Jun', logins: 478, registrations: 25 }
-    ];
-
-    setChartData({
-      userGrowth: userGrowthData,
-      roleDistribution: roleDistributionData,
-      monthlyActivity: monthlyActivityData
-    });
+    setRoleDistribution(roleDistributionData);
   };
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -267,7 +261,7 @@ const DashboardOverview = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={chartData.roleDistribution}
+                data={roleDistribution}
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
@@ -275,7 +269,7 @@ const DashboardOverview = () => {
                 dataKey="value"
                 label={({ name, percentage }) => `${name} ${percentage}%`}
               >
-                {chartData.roleDistribution.map((entry, index) => (
+                {roleDistribution.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
