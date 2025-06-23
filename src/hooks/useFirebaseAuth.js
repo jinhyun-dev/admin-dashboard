@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebase/config';
 import { ROLES } from '../utils/permissions';
 
@@ -15,6 +15,22 @@ export const useFirebaseAuth = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // 로그인 로그 추가 함수
+  const addLoginLog = async (userId, loginMethod = 'email') => {
+    try {
+      await addDoc(collection(db, 'loginLogs'), {
+        userId: userId,
+        loginMethod: loginMethod, // 'email', 'google', etc.
+        timestamp: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD 형식
+        month: new Date().toISOString().substr(0, 7), // YYYY-MM 형식
+      });
+      console.log('Login log added successfully');
+    } catch (error) {
+      console.error('Error adding login log:', error);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -63,6 +79,9 @@ export const useFirebaseAuth = () => {
         status: 'active'
       });
       
+      // 회원가입 후 자동 로그인 로그 추가
+      await addLoginLog(result.user.uid, 'email');
+      
       return result.user;
     } catch (error) {
       setError(error.message);
@@ -79,6 +98,10 @@ export const useFirebaseAuth = () => {
       setError(null);
       
       const result = await signInWithEmailAndPassword(auth, email, password);
+      
+      // 로그인 로그 추가
+      await addLoginLog(result.user.uid, 'email');
+      
       return result.user;
     } catch (error) {
       setError(error.message);
@@ -109,6 +132,9 @@ export const useFirebaseAuth = () => {
           provider: 'google'
         });
       }
+      
+      // 로그인 로그 추가
+      await addLoginLog(result.user.uid, 'google');
       
       return result.user;
     } catch (error) {
