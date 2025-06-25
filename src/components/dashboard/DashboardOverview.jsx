@@ -11,15 +11,63 @@ const DashboardOverview = () => {
   const [roleDistribution, setRoleDistribution] = useState([]);
   const [monthlyActivity, setMonthlyActivity] = useState([]);
 
-  // 고정된 User Growth Trend 데이터 (요동치는 문제 방지)
-  const userGrowthData = useMemo(() => [
-    { month: 'Jan', users: 42, newUsers: 8 },
-    { month: 'Feb', users: 58, newUsers: 12 },
-    { month: 'Mar', users: 67, newUsers: 9 },
-    { month: 'Apr', users: 78, newUsers: 11 },
-    { month: 'May', users: 89, newUsers: 11 },
-    { month: 'Jun', users: 95, newUsers: 6 }
-  ], []);
+  // 실제 데이터 기반 User Growth Trend 계산 (탈퇴 고려)
+  const userGrowthData = useMemo(() => {
+    if (!users || users.length === 0) return [];
+
+    // 최근 6개월 데이터 생성
+    const months = [];
+    const currentDate = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('en', { month: 'short' });
+      
+      months.push({ monthKey, monthName });
+    }
+
+    // 월별 실제 활성 사용자 수 계산
+    const growthData = months.map((month, index) => {
+      // 해당 월 말일 설정
+      const monthEndDate = new Date(
+        parseInt(month.monthKey.split('-')[0]), 
+        parseInt(month.monthKey.split('-')[1]), 
+        0
+      );
+
+      // 해당 월 말까지 가입했고, 현재 활성 상태인 사용자
+      const activeUsersAtMonthEnd = users.filter(user => {
+        if (!user.createdAt) return false;
+        
+        const userDate = new Date(user.createdAt);
+        const isJoinedByThisMonth = userDate <= monthEndDate;
+        
+        // status가 'active'이고, 탈퇴일이 없거나 해당 월 이후인 사용자
+        const isStillActive = user.status === 'active' && 
+          (!user.deletedAt || new Date(user.deletedAt) > monthEndDate);
+        
+        return isJoinedByThisMonth && isStillActive;
+      }).length;
+
+      // 해당 월의 신규 가입자 수
+      const newUsersInMonth = users.filter(user => {
+        if (!user.createdAt) return false;
+        const userDate = new Date(user.createdAt);
+        const userMonth = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
+        return userMonth === month.monthKey;
+      }).length;
+
+      return {
+        month: month.monthName,
+        users: activeUsersAtMonthEnd, // 실제 활성 사용자 수
+        newUsers: newUsersInMonth
+      };
+    });
+
+    console.log('User growth data:', growthData);
+    return growthData;
+  }, [users]);
 
   // 통계 계산 함수들을 useMemo로 최적화
   const calculatedStats = useMemo(() => {
