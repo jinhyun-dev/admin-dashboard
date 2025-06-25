@@ -8,18 +8,8 @@ const DashboardOverview = () => {
   const { users, loading } = useUsers();
   const { loginLogs, loading: logsLoading, getRecentMonthsLogins, getTotalLogins } = useLoginLogs();
   
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeUsers: 0,
-    newUsers: 0,
-    inactiveUsers: 0,
-    userActivity: 0,
-    // 변화율 계산을 위한 이전 값들
-    prevTotalUsers: 0,
-    prevActiveUsers: 0,
-    prevNewUsers: 0,
-    prevUserActivity: 0
-  });
+  const [roleDistribution, setRoleDistribution] = useState([]);
+  const [monthlyActivity, setMonthlyActivity] = useState([]);
 
   // 고정된 User Growth Trend 데이터 (요동치는 문제 방지)
   const userGrowthData = useMemo(() => [
@@ -30,9 +20,6 @@ const DashboardOverview = () => {
     { month: 'May', users: 89, newUsers: 11 },
     { month: 'Jun', users: 95, newUsers: 6 }
   ], []);
-
-  const [roleDistribution, setRoleDistribution] = useState([]);
-  const [monthlyActivity, setMonthlyActivity] = useState([]);
 
   // 통계 계산 함수들을 useMemo로 최적화
   const calculatedStats = useMemo(() => {
@@ -71,6 +58,95 @@ const DashboardOverview = () => {
       userActivity: userActivity
     };
   }, [users, getTotalLogins]);
+
+  // 월간 대비 증감률 계산
+  const monthOverMonthChanges = useMemo(() => {
+    if (!users || users.length === 0 || !loginLogs) {
+      return {
+        totalUsersChange: 0,
+        activeUsersChange: 0,
+        newUsersChange: 0,
+        userActivityChange: 0
+      };
+    }
+
+    // 현재 월과 이전 월 설정
+    const currentDate = new Date();
+    const thisMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    const lastMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // 이번 달 데이터 계산
+    const thisMonthUsers = users.filter(user => {
+      if (!user.createdAt) return false;
+      const userMonth = user.createdAt.substr(0, 7); // YYYY-MM
+      return userMonth === thisMonth;
+    });
+
+    const thisMonthLogins = loginLogs.filter(log => {
+      if (!log.timestamp) return false;
+      const logDate = new Date(log.timestamp);
+      const logMonth = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
+      return logMonth === thisMonth;
+    });
+
+    // 지난 달 데이터 계산
+    const lastMonthUsers = users.filter(user => {
+      if (!user.createdAt) return false;
+      const userMonth = user.createdAt.substr(0, 7);
+      return userMonth === lastMonth;
+    });
+
+    const lastMonthLogins = loginLogs.filter(log => {
+      if (!log.timestamp) return false;
+      const logDate = new Date(log.timestamp);
+      const logMonth = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
+      return logMonth === lastMonth;
+    });
+
+    // 이번 달 지표 (월별 증감률 계산용)
+    const thisMonthStats = {
+      newUsers: thisMonthUsers.length, // 이번 달 신규 가입자
+      activeUsers: thisMonthUsers.filter(user => user.status === 'active').length, // 이번 달 활성 가입자
+      userActivity: thisMonthUsers.length + thisMonthLogins.length // 이번 달 활동량
+    };
+
+    // 지난 달 지표 (월별 증감률 계산용)
+    const lastMonthStats = {
+      newUsers: lastMonthUsers.length, // 지난 달 신규 가입자
+      activeUsers: lastMonthUsers.filter(user => user.status === 'active').length, // 지난 달 활성 가입자
+      userActivity: lastMonthUsers.length + lastMonthLogins.length // 지난 달 활동량
+    };
+
+    console.log('This month stats:', thisMonthStats);
+    console.log('Last month stats:', lastMonthStats);
+
+    // 개선된 증감률 계산 함수
+    const calculateChange = (current, previous) => {
+      if (previous === 0) {
+        // 지난 달이 0이고 이번 달에 데이터가 있으면 null 반환 (NEW 표시용)
+        return current > 0 ? null : 0;
+      }
+      return parseFloat(((current - previous) / previous * 100).toFixed(1));
+    };
+
+    // Total Users는 누적이므로 월별 증감률이 아닌 전체 증가율로 계산
+    const totalUsersChange = users.length > 0 ? 
+      calculateChange(users.length, Math.max(users.length - thisMonthUsers.length, 1)) : 0;
+
+    return {
+      totalUsersChange: totalUsersChange,
+      activeUsersChange: calculateChange(thisMonthStats.activeUsers, lastMonthStats.activeUsers),
+      newUsersChange: calculateChange(thisMonthStats.newUsers, lastMonthStats.newUsers),
+      userActivityChange: calculateChange(thisMonthStats.userActivity, lastMonthStats.userActivity)
+    };
+  }, [users, loginLogs]);
+
+  // 최종 통계 데이터 (누적 수치 + 월간 대비 증감률)
+  const statsWithChanges = useMemo(() => ({
+    ...calculatedStats,
+    ...monthOverMonthChanges
+  }), [calculatedStats, monthOverMonthChanges]);
 
   // 역할 분포 계산
   const calculatedRoleDistribution = useMemo(() => {
@@ -118,44 +194,6 @@ const DashboardOverview = () => {
     return monthlyData;
   }, [users, getRecentMonthsLogins, logsLoading]);
 
-  // 변화율 계산
-  const statsWithChanges = useMemo(() => {
-    const totalUsersChange = stats.prevTotalUsers > 0 
-      ? ((calculatedStats.totalUsers - stats.prevTotalUsers) / stats.prevTotalUsers * 100).toFixed(1)
-      : 0;
-    
-    const activeUsersChange = stats.prevActiveUsers > 0 
-      ? ((calculatedStats.activeUsers - stats.prevActiveUsers) / stats.prevActiveUsers * 100).toFixed(1)
-      : 0;
-    
-    const newUsersChange = stats.prevNewUsers > 0 
-      ? ((calculatedStats.newUsers - stats.prevNewUsers) / stats.prevNewUsers * 100).toFixed(1)
-      : 0;
-    
-    const userActivityChange = stats.prevUserActivity > 0 
-      ? ((calculatedStats.userActivity - stats.prevUserActivity) / stats.prevUserActivity * 100).toFixed(1)
-      : 0;
-
-    return {
-      ...calculatedStats,
-      totalUsersChange: parseFloat(totalUsersChange),
-      activeUsersChange: parseFloat(activeUsersChange),
-      newUsersChange: parseFloat(newUsersChange),
-      userActivityChange: parseFloat(userActivityChange)
-    };
-  }, [calculatedStats, stats]);
-
-  // 계산된 값들을 상태에 저장 (이전 값 추적용)
-  useEffect(() => {
-    setStats(prev => ({
-      ...statsWithChanges,
-      prevTotalUsers: prev.totalUsers || calculatedStats.totalUsers,
-      prevActiveUsers: prev.activeUsers || calculatedStats.activeUsers,
-      prevNewUsers: prev.newUsers || calculatedStats.newUsers,
-      prevUserActivity: prev.userActivity || calculatedStats.userActivity
-    }));
-  }, [calculatedStats.totalUsers, calculatedStats.activeUsers, calculatedStats.newUsers, calculatedStats.userActivity]);
-
   // 역할 분포 상태 업데이트
   useEffect(() => {
     setRoleDistribution(calculatedRoleDistribution);
@@ -193,7 +231,8 @@ const DashboardOverview = () => {
           }}>
             {value.toLocaleString()}
           </p>
-          {change !== undefined && change !== 0 && (
+          {/* change가 null이 아니고 0이 아닐 때만 표시 */}
+          {change !== undefined && change !== null && change !== 0 && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -210,6 +249,26 @@ const DashboardOverview = () => {
                 color: trend === 'up' ? 'var(--color-success)' : 'var(--color-error)'
               }}>
                 {Math.abs(change)}%
+              </span>
+            </div>
+          )}
+          {/* 신규 데이터인 경우 "NEW" 표시 */}
+          {change === null && value > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              marginTop: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                color: 'var(--color-primary)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px'
+              }}>
+                NEW
               </span>
             </div>
           )}
@@ -269,28 +328,28 @@ const DashboardOverview = () => {
           title="Total Users"
           value={statsWithChanges.totalUsers}
           change={statsWithChanges.totalUsersChange}
-          trend={statsWithChanges.totalUsersChange >= 0 ? 'up' : 'down'}
+          trend={statsWithChanges.totalUsersChange !== null && statsWithChanges.totalUsersChange >= 0 ? 'up' : 'down'}
           icon={Users}
         />
         <KPICard
           title="Active Users"
           value={statsWithChanges.activeUsers}
           change={statsWithChanges.activeUsersChange}
-          trend={statsWithChanges.activeUsersChange >= 0 ? 'up' : 'down'}
+          trend={statsWithChanges.activeUsersChange !== null && statsWithChanges.activeUsersChange >= 0 ? 'up' : 'down'}
           icon={UserCheck}
         />
         <KPICard
           title="New Users (30d)"
           value={statsWithChanges.newUsers}
           change={statsWithChanges.newUsersChange}
-          trend={statsWithChanges.newUsersChange >= 0 ? 'up' : 'down'}
+          trend={statsWithChanges.newUsersChange !== null && statsWithChanges.newUsersChange >= 0 ? 'up' : 'down'}
           icon={UserPlus}
         />
         <KPICard
           title="User Activity"
           value={statsWithChanges.userActivity}
           change={statsWithChanges.userActivityChange}
-          trend={statsWithChanges.userActivityChange >= 0 ? 'up' : 'down'}
+          trend={statsWithChanges.userActivityChange !== null && statsWithChanges.userActivityChange >= 0 ? 'up' : 'down'}
           icon={Activity}
         />
       </div>
