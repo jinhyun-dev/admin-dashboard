@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, Sun, Moon, Bell, Search, User, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { ROLES } from '../../utils/permissions';
+import { getAvailableRoles } from '../../utils/permissions';
 import { useAuth } from '../../hooks/useAuth';
 
 const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPage }) => {
   const { theme, toggleTheme } = useTheme();
-  const { currentUser, updateUserRole, logout } = useAuth();
+  const { currentUser, originalRole, currentRole, switchRole, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
   const [searchValue, setSearchValue] = useState('');
@@ -30,6 +30,9 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   ];
 
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  // 사용 가능한 역할 목록 가져오기
+  const availableRoles = getAvailableRoles(originalRole);
 
   useEffect(() => {
     const handleResize = () => {
@@ -140,6 +143,18 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     
     setShowSettingsModal(false);
     alert('Settings saved successfully!');
+  };
+
+  // 역할 전환 핸들러 (기존 방식 유지하되 권한 체크 추가)
+  const handleRoleSwitch = (newRole) => {
+    // 임시 역할 전환 방식으로 변경
+    const success = switchRole(newRole);
+    if (success) {
+      setShowUserMenu(false);
+      alert(`Role switched to: ${newRole}`);
+    } else {
+      alert(`Cannot switch to role: ${newRole}. You can only switch to roles at your level or below.`);
+    }
   };
 
   return (
@@ -256,8 +271,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                 </form>
               </div>
             )}
-
-            <div className="flex items-center" style={{ gap: '1rem' }}>
+<div className="flex items-center" style={{ gap: '1rem' }}>
               {/* 알림 버튼 */}
               <div className="notification-dropdown" style={{ position: 'relative' }}>
                 <button 
@@ -394,7 +408,8 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
               >
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
-{/* 사용자 메뉴 */}
+
+              {/* 사용자 메뉴 */}
               <div className="user-menu-dropdown" style={{ position: 'relative' }}>
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -454,7 +469,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                     top: '100%',
                     right: 0,
                     marginTop: '0.5rem',
-                    width: '200px',
+                    width: '250px',
                     backgroundColor: 'var(--bg-primary)',
                     border: '1px solid var(--border-color)',
                     borderRadius: '0.5rem',
@@ -480,6 +495,15 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       }}>
                         {currentUser?.email || 'No Email'}
                       </p>
+                      {/* Original Role과 Current Role 표시 */}
+                      <div style={{
+                        marginTop: '0.5rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        <div>Original Role: <strong style={{ color: 'var(--text-primary)' }}>{originalRole}</strong></div>
+                        <div>Current Role: <strong style={{ color: 'var(--color-primary)' }}>{currentRole}</strong></div>
+                      </div>
                     </div>
                     
                     <div style={{ padding: '0.5rem' }}>
@@ -538,7 +562,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       </button>
                     </div>
                     
-                    {/* 역할 전환 섹션 */}
+                    {/* 역할 전환 섹션 - 수정된 부분 */}
                     <div style={{
                       padding: '0.5rem',
                       borderTop: '1px solid var(--border-color)',
@@ -553,35 +577,16 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       }}>
                         Switch Role (Demo)
                       </p>
-                      {Object.values(ROLES).map((role) => (
+                      {availableRoles.map((role) => (
                         <button
                           key={role}
-                          onClick={async () => {
-                            try {
-                              await updateUserRole(role);
-                              setShowUserMenu(false);
-                              
-                              // 현재 페이지 정보를 localStorage에 저장 (혹시 모를 경우를 대비)
-                              localStorage.setItem('currentPage', currentPage);
-                              
-                              // 역할 변경 알림 및 새로고침
-                              alert(`Role switched to: ${role}`);
-                              
-                              // 잠시 후 자동 새로고침
-                              setTimeout(() => {
-                                window.location.reload();
-                              }, 500);
-                            } catch (error) {
-                              console.error('Role switch failed:', error);
-                              alert('Failed to switch role. Please try again.');
-                            }
-                          }}
+                          onClick={() => handleRoleSwitch(role)}
                           style={{
                             width: '100%',
                             padding: '0.5rem 0.75rem',
                             fontSize: '0.875rem',
-                            color: currentUser?.role === role ? 'var(--color-primary)' : 'var(--text-primary)',
-                            backgroundColor: currentUser?.role === role ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            color: currentRole === role ? 'var(--color-primary)' : 'var(--text-primary)',
+                            backgroundColor: currentRole === role ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                             border: 'none',
                             borderRadius: '0.25rem',
                             cursor: 'pointer',
@@ -589,12 +594,12 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                             marginBottom: '0.25rem'
                           }}
                           onMouseEnter={(e) => {
-                            if (currentUser?.role !== role) {
+                            if (currentRole !== role) {
                               e.target.style.backgroundColor = 'var(--bg-secondary)';
                             }
                           }}
                           onMouseLeave={(e) => {
-                            if (currentUser?.role !== role) {
+                            if (currentRole !== role) {
                               e.target.style.backgroundColor = 'transparent';
                             } else {
                               e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';

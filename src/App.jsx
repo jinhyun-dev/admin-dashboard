@@ -10,17 +10,26 @@ import { canAccessPage } from './utils/permissions';
 import { migrateInitialUsers } from './utils/migrateData';
 
 function App() {
-  // localStorage에서 마지막 페이지 정보를 가져와서 초기값으로 설정
-  const [currentPage, setCurrentPage] = useState(() => {
-    return localStorage.getItem('currentPage') || 'dashboard';
-  });
-  
+  // 로그인된 사용자만 localStorage에서 페이지 정보를 가져옴
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 기본값은 dashboard
   const { currentUser, isLoading } = useAuth();
 
-  // 페이지가 변경될 때마다 localStorage에 저장
+  // 로그인된 사용자에 대해서만 localStorage 페이지 복원
   useEffect(() => {
-    localStorage.setItem('currentPage', currentPage);
-  }, [currentPage]);
+    if (currentUser) {
+      const savedPage = localStorage.getItem('currentPage');
+      if (savedPage) {
+        setCurrentPage(savedPage);
+      }
+    }
+  }, [currentUser]);
+
+  // 페이지가 변경될 때마다 localStorage에 저장 (로그인된 상태에서만)
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('currentPage', currentPage);
+    }
+  }, [currentPage, currentUser]);
 
   // 마이그레이션 실행 (한 번만)
   useEffect(() => {
@@ -62,6 +71,20 @@ function App() {
           }}>
             Current role: <strong>{currentUser?.role}</strong>
           </p>
+          <button
+            onClick={() => setCurrentPage('dashboard')}
+            style={{
+              marginTop: '1rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              cursor: 'pointer'
+            }}
+          >
+            Go to Dashboard
+          </button>
         </div>
       );
     }
@@ -76,7 +99,7 @@ function App() {
     }
   };
 
-  // 로딩 중
+  // 로딩 중일 때만 로딩 화면 표시
   if (isLoading) {
     return (
       <ThemeProvider>
@@ -87,13 +110,27 @@ function App() {
           height: '100vh',
           backgroundColor: 'var(--bg-secondary)'
         }}>
-          <div style={{ color: 'var(--text-primary)' }}>Loading...</div>
+          <div style={{ 
+            textAlign: 'center',
+            color: 'var(--text-primary)' 
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid var(--border-color)',
+              borderTop: '4px solid var(--color-primary)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem auto'
+            }}></div>
+            <p>Loading...</p>
+          </div>
         </div>
       </ThemeProvider>
     );
   }
 
-  // 로그인하지 않은 경우
+  // 로그인하지 않은 경우 - 항상 로그인 페이지 표시
   if (!currentUser) {
     return (
       <ThemeProvider>
@@ -102,12 +139,18 @@ function App() {
     );
   }
 
-  // 기존 로그인된 사용자 UI
+  // 로그인된 사용자 UI
   return (
     <ThemeProvider>
       <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>
         {renderPage()}
       </Layout>
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </ThemeProvider>
   );
 }

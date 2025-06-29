@@ -11,12 +11,13 @@ export const NAVIGATION_ITEMS = [
   }
 ];
 
+// 요구사항에 맞게 수정된 초기 사용자 데이터
 export const INITIAL_USERS = [
   {
     id: 1,
     name: 'John Doe',
     email: 'john.doe@example.com',
-    role: 'Admin',
+    role: 'Admin', // Admin으로 변경
     status: 'active',
     createdAt: '2024-01-15'
   },
@@ -24,7 +25,7 @@ export const INITIAL_USERS = [
     id: 2,
     name: 'Jane Smith',
     email: 'jane.smith@example.com',
-    role: 'User',
+    role: 'Admin', // Admin으로 변경
     status: 'active',
     createdAt: '2024-01-16'
   },
@@ -32,7 +33,7 @@ export const INITIAL_USERS = [
     id: 3,
     name: 'Mike Johnson',
     email: 'mike.johnson@example.com',
-    role: 'Manager',
+    role: 'Admin', // Admin으로 변경
     status: 'inactive',
     createdAt: '2024-01-17'
   },
@@ -40,7 +41,7 @@ export const INITIAL_USERS = [
     id: 4,
     name: 'Sarah Wilson',
     email: 'sarah.wilson@example.com',
-    role: 'User',
+    role: 'Admin', // Admin으로 변경
     status: 'active',
     createdAt: '2024-01-18'
   },
@@ -48,7 +49,7 @@ export const INITIAL_USERS = [
     id: 5,
     name: 'David Brown',
     email: 'david.brown@example.com',
-    role: 'User',
+    role: 'Admin', // Admin으로 변경
     status: 'active',
     createdAt: '2024-01-19'
   }

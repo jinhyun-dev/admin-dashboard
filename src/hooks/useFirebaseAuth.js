@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebase/config';
-import { ROLES } from '../utils/permissions';
+import { getOriginalRole } from '../utils/permissions';
 
 export const useFirebaseAuth = () => {
   const [user, setUser] = useState(null);
@@ -35,6 +35,9 @@ export const useFirebaseAuth = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Original Role 계산 (이메일 기반)
+        const originalRole = getOriginalRole(firebaseUser.email);
+        
         // Firestore에서 사용자 추가 정보 가져오기
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         const userData = userDoc.exists() ? userDoc.data() : {};
@@ -44,7 +47,8 @@ export const useFirebaseAuth = () => {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
-          role: userData.role || ROLES.USER, // 기본 역할
+          originalRole: originalRole, // 이메일 기반 Original Role
+          role: originalRole, // 초기에는 Original Role과 동일
           ...userData
         };
         
@@ -60,7 +64,7 @@ export const useFirebaseAuth = () => {
   }, []);
 
   // 이메일/비밀번호 회원가입
-  const signUp = async (email, password, displayName, role = ROLES.USER) => {
+  const signUp = async (email, password, displayName) => {
     try {
       setLoading(true);
       setError(null);
@@ -70,11 +74,15 @@ export const useFirebaseAuth = () => {
       // 프로필 업데이트
       await updateProfile(result.user, { displayName });
       
+      // Original Role 계산 (이메일 기반)
+      const originalRole = getOriginalRole(email);
+      
       // Firestore에 사용자 정보 저장
       await setDoc(doc(db, 'users', result.user.uid), {
         email,
         displayName,
-        role,
+        role: originalRole, // Original Role로 설정
+        originalRole: originalRole, // Original Role 저장
         createdAt: new Date().toISOString(),
         status: 'active'
       });
@@ -119,6 +127,9 @@ export const useFirebaseAuth = () => {
       
       const result = await signInWithPopup(auth, googleProvider);
       
+      // Original Role 계산 (이메일 기반)
+      const originalRole = getOriginalRole(result.user.email);
+      
       // 처음 로그인하는 사용자라면 Firestore에 정보 저장
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
       if (!userDoc.exists()) {
@@ -126,7 +137,8 @@ export const useFirebaseAuth = () => {
           email: result.user.email,
           displayName: result.user.displayName,
           photoURL: result.user.photoURL,
-          role: ROLES.USER, // 기본 역할
+          role: originalRole, // Original Role로 설정
+          originalRole: originalRole, // Original Role 저장
           createdAt: new Date().toISOString(),
           status: 'active',
           provider: 'google'

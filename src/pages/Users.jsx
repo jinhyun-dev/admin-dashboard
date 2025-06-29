@@ -6,13 +6,13 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useUsers } from '../hooks/useFirestore';
-import { hasPermission, PERMISSIONS } from '../utils/permissions';
+import { hasPermission, PERMISSIONS, canManageUser } from '../utils/permissions';
 import { useToast, ToastContainer } from '../components/ui/Toast';
 import { useAuth } from '../hooks/useAuth';
 
 const Users = () => {
   const { toasts, addToast, removeToast } = useToast();
-  const { currentUser } = useAuth();
+  const { currentUser, originalRole, currentRole } = useAuth();
   
   // 강제 리렌더링을 위한 reducer
   const [, forceUpdate] = useReducer(x => x + 1, 0);
@@ -30,37 +30,39 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
-  const [currentRole, setCurrentRole] = useState(currentUser?.role); // 현재 역할 추적
+  const [trackedRole, setTrackedRole] = useState(currentRole); // 현재 역할 추적
   const userTableRef = useRef();
 
-  // currentUser.role이 변경될 때 감지하고 강제 리렌더링
+  // currentRole이 변경될 때 감지하고 강제 리렌더링
   useEffect(() => {
-    if (currentUser?.role && currentUser.role !== currentRole) {
-      console.log('Users component - Role changed from', currentRole, 'to', currentUser.role);
-      setCurrentRole(currentUser.role);
+    if (currentRole && currentRole !== trackedRole) {
+      console.log('Users component - Role changed from', trackedRole, 'to', currentRole);
+      setTrackedRole(currentRole);
       forceUpdate(); // 강제 리렌더링
     }
-  }, [currentUser?.role, currentRole]);
+  }, [currentRole, trackedRole]);
 
-  // useMemo를 사용하여 권한 계산을 최적화하고 의존성을 명확히 함
+  // useMemo를 사용하여 권한 계산을 최적화 (CRUD 모든 권한 포함)
   const permissions = useMemo(() => {
-    const role = currentUser?.role;
+    const role = currentRole;
     console.log('Users component - calculating permissions for role:', role);
     
     return {
       canCreateUsers: hasPermission(role, PERMISSIONS.CREATE_USERS),
+      canReadUsers: hasPermission(role, PERMISSIONS.VIEW_USERS), // Read 권한 추가
       canEditUsers: hasPermission(role, PERMISSIONS.EDIT_USERS),
       canDeleteUsers: hasPermission(role, PERMISSIONS.DELETE_USERS),
       canBulkActions: hasPermission(role, PERMISSIONS.BULK_ACTIONS),
       canExportData: hasPermission(role, PERMISSIONS.EXPORT_DATA)
     };
-  }, [currentUser?.role, currentRole]); // currentRole도 의존성에 추가
+  }, [currentRole, trackedRole]);
 
-  const { canCreateUsers, canEditUsers, canDeleteUsers, canBulkActions, canExportData } = permissions;
+  const { canCreateUsers, canReadUsers, canEditUsers, canDeleteUsers, canBulkActions, canExportData } = permissions;
 
   // 디버깅용 로그
   console.log('Users component render - currentUser:', currentUser);
-  console.log('Users component render - currentRole state:', currentRole);
+  console.log('Users component render - currentRole:', currentRole);
+  console.log('Users component render - originalRole:', originalRole);
   console.log('Users component render - permissions:', permissions);
 
   useEffect(() => {
@@ -91,6 +93,13 @@ const Users = () => {
       addToast('You do not have permission to edit users.', 'error');
       return;
     }
+
+    // Manager 권한 체크: 자신보다 높거나 같은 레벨 사용자 관리 불가
+    if (!canManageUser(currentRole, user.role)) {
+      addToast(`You cannot manage users with role: ${user.role}`, 'error');
+      return;
+    }
+
     setEditingUser(user);
     setIsModalOpen(true);
   };
@@ -100,6 +109,14 @@ const Users = () => {
       addToast('You do not have permission to delete users.', 'error');
       return;
     }
+
+    // 삭제하려는 사용자의 역할 확인
+    const userToDelete = users.find(u => u.id === userId);
+    if (userToDelete && !canManageUser(currentRole, userToDelete.role)) {
+      addToast(`You cannot delete users with role: ${userToDelete.role}`, 'error');
+      return;
+    }
+
     setDeleteConfirm(userId);
   };
 
@@ -181,7 +198,6 @@ const Users = () => {
       </div>
     );
   }
-
   return (
     <div key={currentRole} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{
@@ -213,13 +229,26 @@ const Users = () => {
           }}>
             Manage your application users and their permissions.
           </p>
-          {/* 디버깅 정보 표시 */}
+          {/* CRUD 권한 정보 표시 (요구사항에 따라 추가) */}
           <p style={{
             color: 'var(--text-secondary)',
             fontSize: '0.75rem',
             marginTop: '0.5rem'
           }}>
-            Current Role: {currentRole} | Original Role: {currentUser?.role} | Can Create: {canCreateUsers ? 'Yes' : 'No'} | Can Edit: {canEditUsers ? 'Yes' : 'No'}
+            Current Role: <strong style={{ color: 'var(--color-primary)' }}>{currentRole}</strong> | 
+            Original Role: <strong style={{ color: 'var(--text-primary)' }}>{originalRole}</strong> | 
+            Can Create: <strong style={{ color: canCreateUsers ? 'var(--color-success)' : 'var(--color-error)' }}>
+              {canCreateUsers ? 'Yes' : 'No'}
+            </strong> | 
+            Can Read: <strong style={{ color: canReadUsers ? 'var(--color-success)' : 'var(--color-error)' }}>
+              {canReadUsers ? 'Yes' : 'No'}
+            </strong> | 
+            Can Edit: <strong style={{ color: canEditUsers ? 'var(--color-success)' : 'var(--color-error)' }}>
+              {canEditUsers ? 'Yes' : 'No'}
+            </strong> | 
+            Can Delete: <strong style={{ color: canDeleteUsers ? 'var(--color-success)' : 'var(--color-error)' }}>
+              {canDeleteUsers ? 'Yes' : 'No'}
+            </strong>
           </p>
         </div>
 
@@ -273,9 +302,10 @@ const Users = () => {
               onEdit={handleEditUser}
               onDelete={handleDeleteUser}
               initialSearchTerm={globalSearchTerm}
-              currentUserRole={currentRole} // currentRole 사용
+              currentUserRole={currentRole}
               canEdit={canEditUsers}
               canDelete={canDeleteUsers}
+              canRead={canReadUsers} // Read 권한 추가
             />
           </div>
         </Card.Content>
