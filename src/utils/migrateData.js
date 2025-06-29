@@ -1,30 +1,79 @@
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { INITIAL_USERS } from './constants';
+import { getOriginalRole } from './permissions';
+
+// 샘플 사용자 데이터 (요구사항에 맞게 수정)
+const SAMPLE_USERS = [
+  {
+    email: 'john.doe@example.com',
+    displayName: 'John Doe',
+    status: 'active',
+    createdAt: '2024-01-15',
+    provider: 'sample'
+  },
+  {
+    email: 'jane.smith@example.com',
+    displayName: 'Jane Smith',
+    status: 'active',
+    createdAt: '2024-01-16',
+    provider: 'sample'
+  },
+  {
+    email: 'mike.johnson@example.com',
+    displayName: 'Mike Johnson',
+    status: 'inactive',
+    createdAt: '2024-01-17',
+    provider: 'sample'
+  },
+  {
+    email: 'sarah.wilson@example.com',
+    displayName: 'Sarah Wilson',
+    status: 'active',
+    createdAt: '2024-01-18',
+    provider: 'sample'
+  },
+  {
+    email: 'david.brown@example.com',
+    displayName: 'David Brown',
+    status: 'active',
+    createdAt: '2024-01-19',
+    provider: 'sample'
+  }
+];
 
 // 초기 사용자 데이터를 Firestore로 마이그레이션
 export const migrateInitialUsers = async () => {
   try {
-    // 이미 사용자가 있는지 확인
-    const usersSnapshot = await getDocs(collection(db, 'users'));
+    console.log('마이그레이션 시작: 샘플 사용자 데이터 확인');
     
-    if (usersSnapshot.empty) {
-      console.log('마이그레이션 시작: 초기 사용자 데이터 추가');
+    // 각 샘플 사용자가 이미 존재하는지 확인하고 없으면 추가
+    for (const sampleUser of SAMPLE_USERS) {
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const existingUser = usersSnapshot.docs.find(doc => 
+        doc.data().email === sampleUser.email
+      );
       
-      for (const user of INITIAL_USERS) {
-        await addDoc(collection(db, 'users'), {
-          email: user.email,
-          displayName: user.name,
-          role: user.role,
-          status: user.status,
-          createdAt: user.createdAt
+      if (!existingUser) {
+        // Original Role 계산 (이메일 기반)
+        const originalRole = getOriginalRole(sampleUser.email);
+        
+        // 고유 ID 생성 (이메일 기반)
+        const userId = sampleUser.email.replace(/[@.]/g, '_');
+        
+        await setDoc(doc(db, 'users', userId), {
+          ...sampleUser,
+          role: originalRole,
+          originalRole: originalRole,
+          updatedAt: new Date().toISOString()
         });
+        
+        console.log(`샘플 사용자 추가됨: ${sampleUser.displayName} (${originalRole})`);
+      } else {
+        console.log(`샘플 사용자 이미 존재: ${sampleUser.displayName}`);
       }
-      
-      console.log('마이그레이션 완료: 초기 사용자 데이터 추가됨');
-    } else {
-      console.log('사용자 데이터가 이미 존재함 - 마이그레이션 건너뜀');
     }
+    
+    console.log('마이그레이션 완료: 샘플 사용자 데이터 처리됨');
   } catch (error) {
     console.error('마이그레이션 실패:', error);
   }
