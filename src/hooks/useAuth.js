@@ -26,18 +26,36 @@ export const useAuth = () => {
     return getOriginalRole(user.email);
   }, [user?.email]);
 
-  // 사용자 로그인/로그아웃 시 Current Role 초기화
+  // 사용자 로그인/로그아웃 시 Current Role 관리
   useEffect(() => {
     if (user && originalRole) {
-      // 로그인 시 Original Role로 Current Role 설정
-      setCurrentRole(originalRole);
-      console.log('useAuth - User logged in, setting currentRole to originalRole:', originalRole);
+      // 로그인 시: localStorage에서 저장된 역할 확인
+      const savedCurrentRole = localStorage.getItem(`currentRole_${user.uid}`);
+      
+      if (savedCurrentRole && canSwitchToRole(originalRole, savedCurrentRole)) {
+        // 저장된 역할이 유효하면 사용
+        console.log('useAuth - Using saved currentRole:', savedCurrentRole);
+        setCurrentRole(savedCurrentRole);
+      } else {
+        // 저장된 역할이 없거나 유효하지 않으면 originalRole 사용
+        console.log('useAuth - Setting currentRole to originalRole:', originalRole);
+        setCurrentRole(originalRole);
+        localStorage.setItem(`currentRole_${user.uid}`, originalRole);
+      }
     } else if (!user) {
-      // 로그아웃 시 Current Role 초기화
+      // 로그아웃 시: Current Role 초기화
       setCurrentRole(null);
       console.log('useAuth - User logged out, clearing currentRole');
     }
-  }, [user, originalRole]);
+  }, [user?.uid, originalRole]);
+
+  // currentRole이 변경될 때마다 localStorage에 저장 (사용자별로)
+  useEffect(() => {
+    if (currentRole && user?.uid) {
+      localStorage.setItem(`currentRole_${user.uid}`, currentRole);
+      console.log('useAuth - Saved currentRole to localStorage:', currentRole);
+    }
+  }, [currentRole, user?.uid]);
 
   // useMemo를 사용하여 currentUser 객체 생성
   const currentUser = useMemo(() => {
@@ -81,6 +99,24 @@ export const useAuth = () => {
     console.log('useAuth - updateUserRole completed');
   }, [updateUserRole]);
 
+  // 로그아웃 시 currentRole 초기화
+  const handleLogout = useCallback(async () => {
+    try {
+      // 사용자별 localStorage 클리어
+      if (user?.uid) {
+        localStorage.removeItem(`currentRole_${user.uid}`);
+      }
+      
+      // 로그아웃 실행
+      await logout();
+      
+      console.log('useAuth - Logout completed, currentRole cleared');
+    } catch (error) {
+      console.error('useAuth - Logout error:', error);
+      throw error;
+    }
+  }, [logout, user?.uid]);
+
   // 디버깅을 위한 콘솔 로그
   console.log('useAuth - currentUser:', currentUser);
   console.log('useAuth - originalRole:', originalRole);
@@ -95,7 +131,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signInWithGoogle,
-    logout,
+    logout: handleLogout, // 수정된 로그아웃 함수 사용
     switchRole,
     updateUserRole: handleUpdateUserRole,
     clearError

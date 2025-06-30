@@ -145,18 +145,33 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     alert('Settings saved successfully!');
   };
 
-  // 역할 전환 핸들러 (기존 방식 유지하되 권한 체크 추가)
+  // 역할 전환 핸들러 - 수정된 버전 (Users와 Dashboard 페이지에서 새로고침 추가)
   const handleRoleSwitch = (newRole) => {
-    // 임시 역할 전환 방식으로 변경
     const success = switchRole(newRole);
     if (success) {
       setShowUserMenu(false);
-      alert(`Role switched to: ${newRole}`);
+      
+      // 역할 변경 이벤트 발생
+      const roleChangeEvent = new CustomEvent('roleChanged', {
+        detail: { newRole: newRole, oldRole: currentRole }
+      });
+      window.dispatchEvent(roleChangeEvent);
+      
+      // Users 페이지 또는 Dashboard 페이지에서 역할 변경 시 새로고침
+      if (currentPage === 'users' || currentPage === 'dashboard') {
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      } else {
+        // 다른 페이지에서는 기존처럼 alert만
+        setTimeout(() => {
+          alert(`Role switched to: ${newRole}`);
+        }, 100);
+      }
     } else {
       alert(`Cannot switch to role: ${newRole}. You can only switch to roles at your level or below.`);
     }
   };
-
   return (
     <>
       <header style={{

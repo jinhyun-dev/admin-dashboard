@@ -30,17 +30,49 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
-  const [trackedRole, setTrackedRole] = useState(currentRole); // 현재 역할 추적
+  const [trackedRole, setTrackedRole] = useState(null);
+  const [renderKey, setRenderKey] = useState(0); // 추가: 강제 리렌더링용
   const userTableRef = useRef();
 
-  // currentRole이 변경될 때 감지하고 강제 리렌더링
+  // currentRole이 변경될 때 감지하고 강제 리렌더링 (개선된 버전)
   useEffect(() => {
-    if (currentRole && currentRole !== trackedRole) {
-      console.log('Users component - Role changed from', trackedRole, 'to', currentRole);
-      setTrackedRole(currentRole);
-      forceUpdate(); // 강제 리렌더링
-    }
-  }, [currentRole, trackedRole]);
+    console.log('Users component - Role changed from', trackedRole, 'to', currentRole);
+    console.log('Users component - useEffect triggered with currentRole:', currentRole);
+    console.log('Users component - currentUser?.role:', currentUser?.role);
+    
+    // 조건문 제거하여 항상 업데이트
+    setTrackedRole(currentRole);
+    setRenderKey(prev => prev + 1);
+    forceUpdate();
+  }, [currentRole, currentUser?.role]); // trackedRole 의존성 제거
+
+  // 추가 강제 업데이트
+  useEffect(() => {
+    console.log('Users component - Force update for currentRole:', currentRole);
+    forceUpdate();
+  }, [currentRole]);
+
+  // Header에서 역할 변경 시 즉시 업데이트를 위한 이벤트 리스너
+  useEffect(() => {
+    const handleRoleChange = (event) => {
+      console.log('Users component - Role change event detected:', event.detail);
+      setRenderKey(prev => prev + 1);
+      forceUpdate();
+    };
+
+    window.addEventListener('roleChanged', handleRoleChange);
+    return () => window.removeEventListener('roleChanged', handleRoleChange);
+  }, []);
+
+  // 추가 디버깅용 useEffect들
+  useEffect(() => {
+    console.log('Users component - currentUser changed:', currentUser);
+    console.log('Users component - currentRole from currentUser:', currentUser?.role);
+  }, [currentUser]);
+
+  useEffect(() => {
+    console.log('Users component - Direct currentRole changed:', currentRole);
+  }, [currentRole]);
 
   // useMemo를 사용하여 권한 계산을 최적화 (CRUD 모든 권한 포함)
   const permissions = useMemo(() => {
@@ -49,13 +81,13 @@ const Users = () => {
     
     return {
       canCreateUsers: hasPermission(role, PERMISSIONS.CREATE_USERS),
-      canReadUsers: hasPermission(role, PERMISSIONS.VIEW_USERS), // Read 권한 추가
+      canReadUsers: hasPermission(role, PERMISSIONS.VIEW_USERS),
       canEditUsers: hasPermission(role, PERMISSIONS.EDIT_USERS),
       canDeleteUsers: hasPermission(role, PERMISSIONS.DELETE_USERS),
       canBulkActions: hasPermission(role, PERMISSIONS.BULK_ACTIONS),
       canExportData: hasPermission(role, PERMISSIONS.EXPORT_DATA)
     };
-  }, [currentRole, trackedRole]);
+  }, [currentRole, trackedRole, renderKey]); // renderKey 추가
 
   const { canCreateUsers, canReadUsers, canEditUsers, canDeleteUsers, canBulkActions, canExportData } = permissions;
 
@@ -64,6 +96,7 @@ const Users = () => {
   console.log('Users component render - currentRole:', currentRole);
   console.log('Users component render - originalRole:', originalRole);
   console.log('Users component render - permissions:', permissions);
+  console.log('Users component render - renderKey:', renderKey);
 
   useEffect(() => {
     const handleGlobalSearch = (event) => {
@@ -199,7 +232,10 @@ const Users = () => {
     );
   }
   return (
-    <div key={currentRole} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div 
+      key={`users-${currentRole}-${currentUser?.id}-${renderKey}`} 
+      style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+    >
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -230,13 +266,16 @@ const Users = () => {
             Manage your application users and their permissions.
           </p>
           {/* CRUD 권한 정보 표시 (요구사항에 따라 추가) */}
-          <p style={{
-            color: 'var(--text-secondary)',
-            fontSize: '0.75rem',
-            marginTop: '0.5rem'
-          }}>
-            Current Role: <strong style={{ color: 'var(--color-primary)' }}>{currentRole}</strong> | 
-            Original Role: <strong style={{ color: 'var(--text-primary)' }}>{originalRole}</strong> | 
+          <p 
+            key={`permissions-${currentRole}-${renderKey}`}
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: '0.75rem',
+              marginTop: '0.5rem'
+            }}
+          >
+            Current Role: <strong style={{ color: 'var(--color-primary)' }}>{currentRole || 'Loading...'}</strong> | 
+            Original Role: <strong style={{ color: 'var(--text-primary)' }}>{originalRole || 'Loading...'}</strong> | 
             Can Create: <strong style={{ color: canCreateUsers ? 'var(--color-success)' : 'var(--color-error)' }}>
               {canCreateUsers ? 'Yes' : 'No'}
             </strong> | 
@@ -292,11 +331,11 @@ const Users = () => {
         </div>
       </div>
 
-      <Card>
+      <Card key={`card-${currentRole}-${renderKey}`}>
         <Card.Content style={{ padding: 0 }}>
           <div style={{ padding: '1.5rem' }}>
             <UserTable
-              key={`table-${currentRole}`} // 역할 변경 시 테이블도 리렌더링
+              key={`table-${currentRole}-${trackedRole}-${renderKey}`}
               ref={userTableRef}
               users={users}
               onEdit={handleEditUser}
@@ -305,7 +344,7 @@ const Users = () => {
               currentUserRole={currentRole}
               canEdit={canEditUsers}
               canDelete={canDeleteUsers}
-              canRead={canReadUsers} // Read 권한 추가
+              canRead={canReadUsers}
             />
           </div>
         </Card.Content>
@@ -364,4 +403,27 @@ const Users = () => {
   );
 };
 
-export default Users;
+// Wrapper 컴포넌트로 역할 변경 시 완전한 리마운트 보장
+const UsersWrapper = () => {
+  const { currentRole, currentUser } = useAuth();
+  
+  // currentRole이 null이면 로딩 상태 표시
+  if (!currentRole || !currentUser) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '50vh',
+        color: 'var(--text-secondary)'
+      }}>
+        Loading user permissions...
+      </div>
+    );
+  }
+  
+  // currentRole이 변경될 때마다 완전히 새로운 Users 컴포넌트를 마운트
+  return <Users key={`users-wrapper-${currentRole}-${currentUser?.id}`} />;
+};
+
+export default UsersWrapper;
