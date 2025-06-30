@@ -4,6 +4,28 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useUsers } from '../../hooks/useFirestore';
 import { useLoginLogs } from '../../hooks/useLoginLogs';
 
+// Safari 호환 날짜 파싱 함수
+const safeDateParse = (dateString) => {
+  if (!dateString) return new Date();
+  
+  // Safari 호환 날짜 파싱
+  if (typeof dateString === 'string') {
+    // YYYY-MM-DD 형식을 YYYY/MM/DD로 변환 (Safari 호환)
+    const safeDateString = dateString.replace(/-/g, '/');
+    const date = new Date(safeDateString);
+    
+    // 유효한 날짜인지 확인
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', dateString);
+      return new Date();
+    }
+    
+    return date;
+  }
+  
+  return new Date(dateString);
+};
+
 const DashboardOverview = () => {
   const { users, loading } = useUsers();
   const { loginLogs, loading: logsLoading, getRecentMonthsLogins, getTotalLogins } = useLoginLogs();
@@ -11,7 +33,7 @@ const DashboardOverview = () => {
   const [roleDistribution, setRoleDistribution] = useState([]);
   const [monthlyActivity, setMonthlyActivity] = useState([]);
 
-  // 실제 데이터 기반 User Growth Trend 계산 (탈퇴 고려)
+  // 실제 데이터 기반 User Growth Trend 계산 (탈퇴 고려) - Safari 호환 버전
   const userGrowthData = useMemo(() => {
     if (!users || users.length === 0) return [];
 
@@ -27,7 +49,7 @@ const DashboardOverview = () => {
       months.push({ monthKey, monthName });
     }
 
-    // 월별 실제 활성 사용자 수 계산
+    // 월별 실제 활성 사용자 수 계산 (Safari 호환 버전)
     const growthData = months.map((month, index) => {
       // 해당 월 말일 설정
       const monthEndDate = new Date(
@@ -40,20 +62,21 @@ const DashboardOverview = () => {
       const activeUsersAtMonthEnd = users.filter(user => {
         if (!user.createdAt) return false;
         
-        const userDate = new Date(user.createdAt);
+        // Safari 호환 날짜 파싱 사용
+        const userDate = safeDateParse(user.createdAt);
         const isJoinedByThisMonth = userDate <= monthEndDate;
         
         // status가 'active'이고, 탈퇴일이 없거나 해당 월 이후인 사용자
         const isStillActive = user.status === 'active' && 
-          (!user.deletedAt || new Date(user.deletedAt) > monthEndDate);
+          (!user.deletedAt || safeDateParse(user.deletedAt) > monthEndDate);
         
         return isJoinedByThisMonth && isStillActive;
       }).length;
 
-      // 해당 월의 신규 가입자 수
+      // 해당 월의 신규 가입자 수 (Safari 호환 버전)
       const newUsersInMonth = users.filter(user => {
         if (!user.createdAt) return false;
-        const userDate = new Date(user.createdAt);
+        const userDate = safeDateParse(user.createdAt);
         const userMonth = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
         return userMonth === month.monthKey;
       }).length;
@@ -65,11 +88,11 @@ const DashboardOverview = () => {
       };
     });
 
-    console.log('User growth data:', growthData);
+    console.log('Safari-compatible user growth data:', growthData);
     return growthData;
   }, [users]);
 
-  // 통계 계산 함수들을 useMemo로 최적화
+  // 통계 계산 함수들을 useMemo로 최적화 - Safari 호환 버전
   const calculatedStats = useMemo(() => {
     if (!users || users.length === 0) {
       return {
@@ -85,18 +108,27 @@ const DashboardOverview = () => {
     const active = users.filter(user => user.status === 'active').length;
     const inactive = total - active;
     
-    // 최근 30일 신규 사용자
+    // 최근 30일 신규 사용자 (Safari 호환 버전)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const newUsersCount = users.filter(user => {
-      const createdDate = new Date(user.createdAt);
+      if (!user.createdAt) return false;
+      const createdDate = safeDateParse(user.createdAt); // Safari 호환 파싱 사용
       return createdDate >= thirtyDaysAgo;
     }).length;
 
     // User Activity = 총 등록 수 + 총 로그인 수
     const totalLogins = getTotalLogins();
     const userActivity = total + totalLogins; // registrations + logins
+
+    console.log('Safari-compatible stats:', {
+      totalUsers: total,
+      activeUsers: active,
+      newUsers: newUsersCount,
+      inactiveUsers: inactive,
+      userActivity: userActivity
+    });
 
     return {
       totalUsers: total,
@@ -107,7 +139,7 @@ const DashboardOverview = () => {
     };
   }, [users, getTotalLogins]);
 
-  // 월간 대비 증감률 계산
+  // 월간 대비 증감률 계산 - Safari 호환 버전
   const monthOverMonthChanges = useMemo(() => {
     if (!users || users.length === 0 || !loginLogs) {
       return {
@@ -124,30 +156,32 @@ const DashboardOverview = () => {
     const lastMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // 이번 달 데이터 계산
+    // 이번 달 데이터 계산 (Safari 호환 버전)
     const thisMonthUsers = users.filter(user => {
       if (!user.createdAt) return false;
-      const userMonth = user.createdAt.substr(0, 7); // YYYY-MM
+      const userDate = safeDateParse(user.createdAt); // Safari 호환 파싱
+      const userMonth = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
       return userMonth === thisMonth;
     });
 
     const thisMonthLogins = loginLogs.filter(log => {
       if (!log.timestamp) return false;
-      const logDate = new Date(log.timestamp);
+      const logDate = safeDateParse(log.timestamp); // Safari 호환 파싱
       const logMonth = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
       return logMonth === thisMonth;
     });
 
-    // 지난 달 데이터 계산
+    // 지난 달 데이터 계산 (Safari 호환 버전)
     const lastMonthUsers = users.filter(user => {
       if (!user.createdAt) return false;
-      const userMonth = user.createdAt.substr(0, 7);
+      const userDate = safeDateParse(user.createdAt); // Safari 호환 파싱
+      const userMonth = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
       return userMonth === lastMonth;
     });
 
     const lastMonthLogins = loginLogs.filter(log => {
       if (!log.timestamp) return false;
-      const logDate = new Date(log.timestamp);
+      const logDate = safeDateParse(log.timestamp); // Safari 호환 파싱
       const logMonth = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
       return logMonth === lastMonth;
     });
@@ -166,8 +200,8 @@ const DashboardOverview = () => {
       userActivity: lastMonthUsers.length + lastMonthLogins.length // 지난 달 활동량
     };
 
-    console.log('This month stats:', thisMonthStats);
-    console.log('Last month stats:', lastMonthStats);
+    console.log('Safari-compatible this month stats:', thisMonthStats);
+    console.log('Safari-compatible last month stats:', lastMonthStats);
 
     // 개선된 증감률 계산 함수
     const calculateChange = (current, previous) => {
@@ -212,24 +246,24 @@ const DashboardOverview = () => {
     }));
   }, [users]);
 
-  // 월별 활동 계산
+  // 월별 활동 계산 - Safari 호환 버전
   const calculatedMonthlyActivity = useMemo(() => {
     if (!users || users.length === 0 || logsLoading) return [];
 
     // 실제 로그인 로그 데이터 사용
     const recentMonthsLogins = getRecentMonthsLogins(6);
     
-    // 사용자 생성 날짜를 기반으로 월별 등록 수 계산
+    // 사용자 생성 날짜를 기반으로 월별 등록 수 계산 (Safari 호환 버전)
     const registrationsByMonth = {};
     users.forEach(user => {
       if (user.createdAt) {
-        const date = new Date(user.createdAt);
+        const date = safeDateParse(user.createdAt); // Safari 호환 파싱 사용
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM 형식
         registrationsByMonth[monthKey] = (registrationsByMonth[monthKey] || 0) + 1;
       }
     });
 
-    console.log('Registrations by month:', registrationsByMonth); // 디버깅용
+    console.log('Safari-compatible registrations by month:', registrationsByMonth); // 디버깅용
 
     // 실제 데이터를 기반으로 월별 활동 데이터 생성
     const monthlyData = recentMonthsLogins.map(monthData => ({
@@ -238,7 +272,7 @@ const DashboardOverview = () => {
       registrations: registrationsByMonth[monthData.monthKey] || 0 // 실제 등록 데이터
     }));
 
-    console.log('Monthly activity data:', monthlyData); // 디버깅용
+    console.log('Safari-compatible monthly activity data:', monthlyData); // 디버깅용
     return monthlyData;
   }, [users, getRecentMonthsLogins, logsLoading]);
 
