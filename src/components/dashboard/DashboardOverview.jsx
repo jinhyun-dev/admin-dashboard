@@ -33,15 +33,11 @@ const DashboardOverview = () => {
   const [roleDistribution, setRoleDistribution] = useState([]);
   const [monthlyActivity, setMonthlyActivity] = useState([]);
 
-  // User Growth Trend 계산 - 문자열 비교 방식 (Safari 완전 호환)
+  // User Growth Trend 계산 - Safari 완전 호환 버전
   const userGrowthData = useMemo(() => {
     if (!users || users.length === 0) return [];
 
-    console.log('Safari FINAL Debug - All users:', users.map(u => ({
-      name: u.displayName || u.name,
-      createdAt: u.createdAt,
-      status: u.status
-    })));
+    console.log('Safari Debug - All users data:', users);
 
     // 최근 6개월 데이터 생성
     const months = [];
@@ -55,58 +51,84 @@ const DashboardOverview = () => {
       months.push({ monthKey, monthName });
     }
 
-    console.log('Safari FINAL Debug - Target months:', months);
+    console.log('Safari Debug - Target months:', months);
 
-    // 월별 실제 활성 사용자 수 계산 (완전 다른 접근법)
+    // 월별 실제 활성 사용자 수 계산 (Safari 완전 호환 버전)
     const growthData = months.map((month) => {
-      console.log(`\n=== FINAL Processing ${month.monthName} (${month.monthKey}) ===`);
+      console.log(`\n=== Processing ${month.monthName} (${month.monthKey}) ===`);
       
-      // 해당 월의 마지막 날짜를 문자열로 생성 (Safari 안전)
+      // 해당 월 말일을 명시적으로 계산 (Safari 호환)
       const year = parseInt(month.monthKey.split('-')[0]);
       const monthNum = parseInt(month.monthKey.split('-')[1]);
-      const lastDay = new Date(year, monthNum, 0).getDate(); // 해당 월의 마지막 날
-      const monthEndString = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       
-      console.log(`Safari FINAL Debug - Month end string: ${monthEndString}`);
+      // 다음 달 1일에서 하루 빼기 (Safari에서 확실한 방법)
+      const nextMonth = new Date(year, monthNum, 1); // 다음 달 1일
+      const monthEndDate = new Date(nextMonth.getTime() - 24 * 60 * 60 * 1000); // 하루 빼기
+      
+      console.log(`Safari Debug - Month end date for ${month.monthName}:`, monthEndDate);
 
+      // 해당 월 말까지 가입했고, 현재 활성 상태인 사용자 (완전 Safari 호환)
       let activeUsersAtMonthEnd = 0;
       let newUsersInMonth = 0;
 
       users.forEach((user, userIndex) => {
         if (!user.createdAt) {
-          console.log(`Safari FINAL Debug - User ${userIndex}: No createdAt`);
+          console.log(`Safari Debug - User ${userIndex}: No createdAt`);
           return;
         }
 
-        const userName = user.displayName || user.name || `User${userIndex}`;
-        
-        // 문자열 비교로 단순화 (Safari에서 가장 안전한 방법)
-        const userDateString = user.createdAt.split('T')[0]; // YYYY-MM-DD 부분만 추출
-        
-        console.log(`Safari FINAL Debug - User ${userName}: ${userDateString}`);
+        // Safari 호환 날짜 파싱 - 여러 방법 시도
+        let userDate;
+        try {
+          // 방법 1: YYYY-MM-DD 형식을 직접 파싱
+          if (user.createdAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = user.createdAt.split('-').map(Number);
+            userDate = new Date(year, month - 1, day); // 월은 0부터 시작
+          } 
+          // 방법 2: ISO 형식인 경우
+          else if (user.createdAt.includes('T')) {
+            userDate = new Date(user.createdAt);
+          }
+          // 방법 3: 기타 형식
+          else {
+            userDate = new Date(user.createdAt.replace(/-/g, '/'));
+          }
+          
+          // 유효성 검사
+          if (isNaN(userDate.getTime())) {
+            console.log(`Safari Debug - User ${userIndex}: Invalid date ${user.createdAt}`);
+            return;
+          }
+        } catch (error) {
+          console.log(`Safari Debug - User ${userIndex}: Date parsing error`, error);
+          return;
+        }
 
-        // 해당 월까지 가입한 사용자인지 문자열 비교로 확인
-        const isJoinedByThisMonth = userDateString <= monthEndString;
+        console.log(`Safari Debug - User ${userIndex} (${user.displayName || user.name}): ${user.createdAt} -> ${userDate}`);
+
+        // 해당 월까지 가입한 사용자인지 확인 (밀리초 단위로 비교)
+        const isJoinedByThisMonth = userDate.getTime() <= monthEndDate.getTime();
         
         // 활성 상태 확인
-        const isStillActive = user.status === 'active';
+        const isStillActive = user.status === 'active' && 
+          (!user.deletedAt || new Date(user.deletedAt).getTime() > monthEndDate.getTime());
 
-        console.log(`Safari FINAL Debug - User ${userName}: joinedBy=${isJoinedByThisMonth} (${userDateString} <= ${monthEndString}), active=${isStillActive}`);
+        console.log(`Safari Debug - User ${userIndex}: joinedBy=${isJoinedByThisMonth}, active=${isStillActive}`);
 
         // 해당 월까지 가입한 활성 사용자 카운트
         if (isJoinedByThisMonth && isStillActive) {
           activeUsersAtMonthEnd++;
-          console.log(`Safari FINAL Debug - User ${userName}: ✅ Added to activeUsersAtMonthEnd (total: ${activeUsersAtMonthEnd})`);
-        } else {
-          console.log(`Safari FINAL Debug - User ${userName}: ❌ Not counted (joined: ${isJoinedByThisMonth}, active: ${isStillActive})`);
+          console.log(`Safari Debug - User ${userIndex}: Added to activeUsersAtMonthEnd (total: ${activeUsersAtMonthEnd})`);
         }
 
-        // 해당 월에 새로 가입한 사용자 카운트 (문자열 비교)
-        const userYearMonth = userDateString.substr(0, 7); // YYYY-MM 추출
+        // 해당 월에 새로 가입한 사용자 카운트
+        const userYear = userDate.getFullYear();
+        const userMonth = userDate.getMonth() + 1; // 1부터 시작
+        const userMonthKey = `${userYear}-${String(userMonth).padStart(2, '0')}`;
         
-        if (userYearMonth === month.monthKey) {
+        if (userMonthKey === month.monthKey) {
           newUsersInMonth++;
-          console.log(`Safari FINAL Debug - User ${userName}: ✅ Added to newUsersInMonth (total: ${newUsersInMonth})`);
+          console.log(`Safari Debug - User ${userIndex}: Added to newUsersInMonth (total: ${newUsersInMonth})`);
         }
       });
 
@@ -116,11 +138,11 @@ const DashboardOverview = () => {
         newUsers: newUsersInMonth
       };
 
-      console.log(`Safari FINAL Debug - Final result for ${month.monthName}:`, monthResult);
+      console.log(`Safari Debug - Final result for ${month.monthName}:`, monthResult);
       return monthResult;
     });
 
-    console.log('Safari FINAL Debug - Complete growth data:', growthData);
+    console.log('Safari Debug - Complete growth data:', growthData);
     return growthData;
   }, [users]);
 
