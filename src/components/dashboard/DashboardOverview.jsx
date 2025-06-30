@@ -33,9 +33,11 @@ const DashboardOverview = () => {
   const [roleDistribution, setRoleDistribution] = useState([]);
   const [monthlyActivity, setMonthlyActivity] = useState([]);
 
-  // 실제 데이터 기반 User Growth Trend 계산 (탈퇴 고려) - Safari 호환 버전
+  // User Growth Trend 계산 - Safari 완전 호환 버전
   const userGrowthData = useMemo(() => {
     if (!users || users.length === 0) return [];
+
+    console.log('Safari Debug - All users data:', users);
 
     // 최근 6개월 데이터 생성
     const months = [];
@@ -49,46 +51,98 @@ const DashboardOverview = () => {
       months.push({ monthKey, monthName });
     }
 
-    // 월별 실제 활성 사용자 수 계산 (Safari 호환 버전)
-    const growthData = months.map((month, index) => {
-      // 해당 월 말일 설정
-      const monthEndDate = new Date(
-        parseInt(month.monthKey.split('-')[0]), 
-        parseInt(month.monthKey.split('-')[1]), 
-        0
-      );
+    console.log('Safari Debug - Target months:', months);
 
-      // 해당 월 말까지 가입했고, 현재 활성 상태인 사용자
-      const activeUsersAtMonthEnd = users.filter(user => {
-        if (!user.createdAt) return false;
+    // 월별 실제 활성 사용자 수 계산 (Safari 완전 호환 버전)
+    const growthData = months.map((month) => {
+      console.log(`\n=== Processing ${month.monthName} (${month.monthKey}) ===`);
+      
+      // 해당 월 말일을 명시적으로 계산 (Safari 호환)
+      const year = parseInt(month.monthKey.split('-')[0]);
+      const monthNum = parseInt(month.monthKey.split('-')[1]);
+      
+      // 다음 달 1일에서 하루 빼기 (Safari에서 확실한 방법)
+      const nextMonth = new Date(year, monthNum, 1); // 다음 달 1일
+      const monthEndDate = new Date(nextMonth.getTime() - 24 * 60 * 60 * 1000); // 하루 빼기
+      
+      console.log(`Safari Debug - Month end date for ${month.monthName}:`, monthEndDate);
+
+      // 해당 월 말까지 가입했고, 현재 활성 상태인 사용자 (완전 Safari 호환)
+      let activeUsersAtMonthEnd = 0;
+      let newUsersInMonth = 0;
+
+      users.forEach((user, userIndex) => {
+        if (!user.createdAt) {
+          console.log(`Safari Debug - User ${userIndex}: No createdAt`);
+          return;
+        }
+
+        // Safari 호환 날짜 파싱 - 여러 방법 시도
+        let userDate;
+        try {
+          // 방법 1: YYYY-MM-DD 형식을 직접 파싱
+          if (user.createdAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = user.createdAt.split('-').map(Number);
+            userDate = new Date(year, month - 1, day); // 월은 0부터 시작
+          } 
+          // 방법 2: ISO 형식인 경우
+          else if (user.createdAt.includes('T')) {
+            userDate = new Date(user.createdAt);
+          }
+          // 방법 3: 기타 형식
+          else {
+            userDate = new Date(user.createdAt.replace(/-/g, '/'));
+          }
+          
+          // 유효성 검사
+          if (isNaN(userDate.getTime())) {
+            console.log(`Safari Debug - User ${userIndex}: Invalid date ${user.createdAt}`);
+            return;
+          }
+        } catch (error) {
+          console.log(`Safari Debug - User ${userIndex}: Date parsing error`, error);
+          return;
+        }
+
+        console.log(`Safari Debug - User ${userIndex} (${user.displayName || user.name}): ${user.createdAt} -> ${userDate}`);
+
+        // 해당 월까지 가입한 사용자인지 확인 (밀리초 단위로 비교)
+        const isJoinedByThisMonth = userDate.getTime() <= monthEndDate.getTime();
         
-        // Safari 호환 날짜 파싱 사용
-        const userDate = safeDateParse(user.createdAt);
-        const isJoinedByThisMonth = userDate <= monthEndDate;
-        
-        // status가 'active'이고, 탈퇴일이 없거나 해당 월 이후인 사용자
+        // 활성 상태 확인
         const isStillActive = user.status === 'active' && 
-          (!user.deletedAt || safeDateParse(user.deletedAt) > monthEndDate);
+          (!user.deletedAt || new Date(user.deletedAt).getTime() > monthEndDate.getTime());
+
+        console.log(`Safari Debug - User ${userIndex}: joinedBy=${isJoinedByThisMonth}, active=${isStillActive}`);
+
+        // 해당 월까지 가입한 활성 사용자 카운트
+        if (isJoinedByThisMonth && isStillActive) {
+          activeUsersAtMonthEnd++;
+          console.log(`Safari Debug - User ${userIndex}: Added to activeUsersAtMonthEnd (total: ${activeUsersAtMonthEnd})`);
+        }
+
+        // 해당 월에 새로 가입한 사용자 카운트
+        const userYear = userDate.getFullYear();
+        const userMonth = userDate.getMonth() + 1; // 1부터 시작
+        const userMonthKey = `${userYear}-${String(userMonth).padStart(2, '0')}`;
         
-        return isJoinedByThisMonth && isStillActive;
-      }).length;
+        if (userMonthKey === month.monthKey) {
+          newUsersInMonth++;
+          console.log(`Safari Debug - User ${userIndex}: Added to newUsersInMonth (total: ${newUsersInMonth})`);
+        }
+      });
 
-      // 해당 월의 신규 가입자 수 (Safari 호환 버전)
-      const newUsersInMonth = users.filter(user => {
-        if (!user.createdAt) return false;
-        const userDate = safeDateParse(user.createdAt);
-        const userMonth = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
-        return userMonth === month.monthKey;
-      }).length;
-
-      return {
+      const monthResult = {
         month: month.monthName,
-        users: activeUsersAtMonthEnd, // 실제 활성 사용자 수
+        users: activeUsersAtMonthEnd,
         newUsers: newUsersInMonth
       };
+
+      console.log(`Safari Debug - Final result for ${month.monthName}:`, monthResult);
+      return monthResult;
     });
 
-    console.log('Safari-compatible user growth data:', growthData);
+    console.log('Safari Debug - Complete growth data:', growthData);
     return growthData;
   }, [users]);
 
