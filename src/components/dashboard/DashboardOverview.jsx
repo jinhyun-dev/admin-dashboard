@@ -4,35 +4,34 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useUsers } from '../../hooks/useFirestore';
 import { useLoginLogs } from '../../hooks/useLoginLogs';
 
-// 크로스 브라우저 호환 날짜 파싱 함수 (완전히 새로운 방식)
+// Safari 완전 호환 날짜 파싱 (시간대 무시)
 const parseDate = (dateString) => {
   if (!dateString) return null;
   
   try {
-    // 문자열을 정규화
     const normalized = String(dateString).trim();
     
-    // YYYY-MM-DD 형식 처리 (가장 안전한 방법)
+    // YYYY-MM-DD 형식 직접 파싱 (시간대 문제 완전 회피)
     const dateMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (dateMatch) {
       const year = parseInt(dateMatch[1], 10);
       const month = parseInt(dateMatch[2], 10) - 1; // 0부터 시작
       const day = parseInt(dateMatch[3], 10);
-      return new Date(year, month, day);
+      
+      // UTC 기준으로 생성하여 시간대 문제 완전 회피
+      const date = new Date(Date.UTC(year, month, day, 12, 0, 0)); // 정오로 설정
+      return date;
     }
     
-    // ISO 형식 처리
+    // ISO 형식 처리 (시간대 정보 제거)
     if (normalized.includes('T') || normalized.includes('Z')) {
-      const date = new Date(normalized);
-      if (!isNaN(date.getTime())) {
-        return date;
+      const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const year = parseInt(isoMatch[1], 10);
+        const month = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        return new Date(Date.UTC(year, month, day, 12, 0, 0));
       }
-    }
-    
-    // 마지막 시도: 직접 파싱
-    const fallbackDate = new Date(normalized);
-    if (!isNaN(fallbackDate.getTime())) {
-      return fallbackDate;
     }
     
     console.warn(`Unable to parse date: ${dateString}`);
@@ -43,19 +42,56 @@ const parseDate = (dateString) => {
   }
 };
 
-// 날짜를 YYYY-MM 형식으로 변환 (크로스 브라우저 호환)
+// 날짜를 YYYY-MM-DD 형식으로 변환 (시간대 무시)
+const formatDateOnly = (date) => {
+  if (!date || isNaN(date.getTime())) return null;
+  
+  // UTC 기준으로 형식화하여 시간대 문제 회피
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// 날짜를 YYYY-MM 형식으로 변환 (시간대 무시)
 const formatDateToMonth = (date) => {
   if (!date || isNaN(date.getTime())) return null;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  
+  // UTC 기준으로 형식화하여 시간대 문제 회피
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 };
 
-// 현재 날짜 기준 N일 전 날짜 계산
+// 현재 날짜 기준 N일 전 날짜 계산 (UTC 기준)
 const getDaysAgo = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date;
+  const now = new Date();
+  // 현재 날짜를 UTC 정오로 설정
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+  const targetDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+  return targetDate;
+};
+
+// 두 날짜를 비교 (일자만, 시간 무시)
+const isSameOrAfter = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  
+  // 날짜만 비교 (시간 무시)
+  const d1 = new Date(Date.UTC(date1.getUTCFullYear(), date1.getUTCMonth(), date1.getUTCDate()));
+  const d2 = new Date(Date.UTC(date2.getUTCFullYear(), date2.getUTCMonth(), date2.getUTCDate()));
+  
+  return d1.getTime() >= d2.getTime();
+};
+
+// 두 날짜를 비교 (일자만, 시간 무시)
+const isSameOrBefore = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  
+  // 날짜만 비교 (시간 무시)
+  const d1 = new Date(Date.UTC(date1.getUTCFullYear(), date1.getUTCMonth(), date1.getUTCDate()));
+  const d2 = new Date(Date.UTC(date2.getUTCFullYear(), date2.getUTCMonth(), date2.getUTCDate()));
+  
+  return d1.getTime() <= d2.getTime();
 };
 
 // 월 이름 변환
@@ -71,11 +107,18 @@ const DashboardOverview = () => {
   const [roleDistribution, setRoleDistribution] = useState([]);
   const [monthlyActivity, setMonthlyActivity] = useState([]);
 
-  // 현재 날짜 정보
+  // 현재 날짜 정보 (UTC 기준)
   const currentDate = new Date();
+  const currentUTC = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate(), 12, 0, 0));
   const thirtyDaysAgo = getDaysAgo(30);
 
-  // 기본 통계 계산 (안전한 방식)
+  console.log('=== Date Debug Info ===');
+  console.log('Current date:', currentDate);
+  console.log('Current UTC:', currentUTC);
+  console.log('30 days ago:', thirtyDaysAgo);
+  console.log('30 days ago formatted:', formatDateOnly(thirtyDaysAgo));
+
+  // 기본 통계 계산 (완전 Safari 호환)
   const calculatedStats = useMemo(() => {
     if (!users || users.length === 0) {
       return {
@@ -90,12 +133,13 @@ const DashboardOverview = () => {
     console.log('=== Stats Calculation Debug ===');
     console.log('Total users array:', users.length);
     console.log('Sample user data:', users.slice(0, 3));
+    console.log('30 days ago threshold:', formatDateOnly(thirtyDaysAgo));
 
     const total = users.length;
     const active = users.filter(user => user.status === 'active').length;
     const inactive = total - active;
     
-    // 최근 30일 신규 사용자 계산 (안전한 방식)
+    // 최근 30일 신규 사용자 계산 (완전 Safari 호환)
     let newUsersCount = 0;
     users.forEach((user, index) => {
       if (!user.createdAt) {
@@ -104,13 +148,23 @@ const DashboardOverview = () => {
       }
       
       const userDate = parseDate(user.createdAt);
-      if (userDate && userDate >= thirtyDaysAgo) {
+      if (!userDate) {
+        console.log(`User ${index} - failed to parse date:`, user.createdAt);
+        return;
+      }
+      
+      // 30일 이내 체크 (시간대 문제 완전 회피)
+      const isWithin30Days = isSameOrAfter(userDate, thirtyDaysAgo);
+      
+      console.log(`User ${index} (${user.name || user.displayName}):`, {
+        createdAt: user.createdAt,
+        parsedDate: formatDateOnly(userDate),
+        thirtyDaysAgo: formatDateOnly(thirtyDaysAgo),
+        isWithin30Days: isWithin30Days
+      });
+      
+      if (isWithin30Days) {
         newUsersCount++;
-        console.log(`User ${user.name || user.displayName} is within 30 days:`, {
-          createdAt: user.createdAt,
-          parsedDate: userDate,
-          thirtyDaysAgo: thirtyDaysAgo
-        });
       }
     });
 
@@ -125,23 +179,29 @@ const DashboardOverview = () => {
       userActivity: userActivity
     };
 
-    console.log('Calculated stats:', result);
+    console.log('Final calculated stats:', result);
     return result;
   }, [users, getTotalLogins, thirtyDaysAgo]);
 
-  // 사용자 성장 트렌드 계산 (완전히 새로운 안전한 방식)
+  // 사용자 성장 트렌드 계산 (완전 Safari 호환)
   const userGrowthData = useMemo(() => {
     if (!users || users.length === 0) return [];
 
     console.log('=== User Growth Calculation Debug ===');
     
-    // 최근 6개월 정보 생성
+    // 최근 6개월 정보 생성 (UTC 기준)
     const months = [];
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthKey = formatDateToMonth(date);
-      const monthName = getMonthName(date.getMonth());
-      months.push({ monthKey, monthName, year: date.getFullYear(), month: date.getMonth() });
+      const targetDate = new Date(Date.UTC(currentUTC.getUTCFullYear(), currentUTC.getUTCMonth() - i, 1, 12, 0, 0));
+      const monthKey = formatDateToMonth(targetDate);
+      const monthName = getMonthName(targetDate.getUTCMonth());
+      months.push({ 
+        monthKey, 
+        monthName, 
+        year: targetDate.getUTCFullYear(), 
+        month: targetDate.getUTCMonth(),
+        date: targetDate
+      });
     }
 
     console.log('Target months:', months);
@@ -150,9 +210,9 @@ const DashboardOverview = () => {
     const growthData = months.map((monthInfo) => {
       console.log(`\n--- Processing ${monthInfo.monthName} (${monthInfo.monthKey}) ---`);
       
-      // 해당 월 말일 계산
-      const monthEndDate = new Date(monthInfo.year, monthInfo.month + 1, 0); // 다음 달 0일 = 현재 월 마지막 날
-      console.log(`Month end date for ${monthInfo.monthName}:`, monthEndDate);
+      // 해당 월 말일 계산 (UTC 기준)
+      const monthEndDate = new Date(Date.UTC(monthInfo.year, monthInfo.month + 1, 0, 23, 59, 59)); // 다음 달 0일 = 현재 월 마지막 날
+      console.log(`Month end date for ${monthInfo.monthName}:`, formatDateOnly(monthEndDate));
 
       let activeUsersAtMonthEnd = 0;
       let newUsersInMonth = 0;
@@ -163,12 +223,12 @@ const DashboardOverview = () => {
         const userDate = parseDate(user.createdAt);
         if (!userDate) return;
 
-        // 해당 월까지 가입한 사용자인지 확인
-        const isJoinedByThisMonth = userDate <= monthEndDate;
+        // 해당 월까지 가입한 사용자인지 확인 (시간대 문제 완전 회피)
+        const isJoinedByThisMonth = isSameOrBefore(userDate, monthEndDate);
         
-        // 활성 상태 확인 (삭제되지 않고 active 상태)
+        // 활성 상태 확인
         const isStillActive = user.status === 'active' && 
-          (!user.deletedAt || parseDate(user.deletedAt) > monthEndDate);
+          (!user.deletedAt || isSameOrAfter(parseDate(user.deletedAt) || new Date(), monthEndDate));
 
         // 해당 월까지 가입한 활성 사용자 카운트
         if (isJoinedByThisMonth && isStillActive) {
@@ -179,6 +239,7 @@ const DashboardOverview = () => {
         const userMonth = formatDateToMonth(userDate);
         if (userMonth === monthInfo.monthKey) {
           newUsersInMonth++;
+          console.log(`User ${userIndex} (${user.name || user.displayName}) joined in ${monthInfo.monthName}`);
         }
       });
 
@@ -194,9 +255,9 @@ const DashboardOverview = () => {
 
     console.log('Complete growth data:', growthData);
     return growthData;
-  }, [users, currentDate]);
+  }, [users, currentUTC]);
 
-  // 월간 대비 증감률 계산 (안전한 방식)
+  // 월간 대비 증감률 계산 (완전 Safari 호환)
   const monthOverMonthChanges = useMemo(() => {
     if (!users || users.length === 0 || !loginLogs) {
       return {
@@ -209,9 +270,9 @@ const DashboardOverview = () => {
 
     console.log('=== Month over Month Changes Debug ===');
 
-    // 현재 월과 이전 월
-    const thisMonth = formatDateToMonth(currentDate);
-    const lastMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    // 현재 월과 이전 월 (UTC 기준)
+    const thisMonth = formatDateToMonth(currentUTC);
+    const lastMonthDate = new Date(Date.UTC(currentUTC.getUTCFullYear(), currentUTC.getUTCMonth() - 1, 1, 12, 0, 0));
     const lastMonth = formatDateToMonth(lastMonthDate);
 
     console.log('Comparing months:', { thisMonth, lastMonth });
@@ -287,7 +348,7 @@ const DashboardOverview = () => {
 
     console.log('Month over month changes:', result);
     return result;
-  }, [users, loginLogs, currentDate]);
+  }, [users, loginLogs, currentUTC]);
 
   // 최종 통계 데이터
   const statsWithChanges = useMemo(() => ({
@@ -311,25 +372,27 @@ const DashboardOverview = () => {
     }));
   }, [users]);
 
-  // 월별 활동 계산
+  // 월별 활동 계산 (완전 Safari 호환)
   const calculatedMonthlyActivity = useMemo(() => {
     if (!users || users.length === 0 || logsLoading) return [];
 
     const recentMonthsLogins = getRecentMonthsLogins(6);
     
-    // 월별 등록 수 계산
+    // 월별 등록 수 계산 (완전 Safari 호환)
     const registrationsByMonth = {};
     users.forEach(user => {
       if (user.createdAt) {
         const date = parseDate(user.createdAt);
         if (date) {
           const monthKey = formatDateToMonth(date);
-          registrationsByMonth[monthKey] = (registrationsByMonth[monthKey] || 0) + 1;
+          if (monthKey) {
+            registrationsByMonth[monthKey] = (registrationsByMonth[monthKey] || 0) + 1;
+          }
         }
       }
     });
 
-    console.log('Monthly registrations:', registrationsByMonth);
+    console.log('Safari-compatible monthly registrations:', registrationsByMonth);
 
     const monthlyData = recentMonthsLogins.map(monthData => ({
       month: monthData.month,
@@ -337,7 +400,7 @@ const DashboardOverview = () => {
       registrations: registrationsByMonth[monthData.monthKey] || 0
     }));
 
-    console.log('Monthly activity data:', monthlyData);
+    console.log('Safari-compatible monthly activity data:', monthlyData);
     return monthlyData;
   }, [users, getRecentMonthsLogins, logsLoading]);
 
