@@ -20,26 +20,36 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
   }, []);
 
   const handleNavigation = (pageId) => {
+    console.log('Navigation clicked:', pageId); // 디버깅용
     setCurrentPage(pageId);
     onClose();
   };
 
+  // 오버레이 클릭 핸들러 (사이드바 외부 클릭 시 닫기)
+  const handleOverlayClick = (e) => {
+    // 오버레이 자체를 클릭했을 때만 닫기 (사이드바 내부 클릭은 무시)
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay - z-index 수정 및 클릭 이벤트 개선 */}
       {isOpen && !isDesktop && (
         <div 
-          onClick={onClose}
+          onClick={handleOverlayClick}
           style={{
             position: 'fixed',
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 40
+            zIndex: 39, // 사이드바보다 낮게 설정
+            cursor: 'pointer'
           }}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - z-index 높게 설정 */}
       <div style={{
         position: 'fixed',
         top: '64px', // 헤더 높이만큼 아래에서 시작
@@ -50,8 +60,9 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
         borderRight: '1px solid var(--border-color)',
         transform: (isDesktop || isOpen) ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.3s ease-in-out',
-        zIndex: 30,
-        overflowY: 'auto'
+        zIndex: 50, // 오버레이보다 높게 설정
+        overflowY: 'auto',
+        boxShadow: isOpen && !isDesktop ? 'var(--shadow-lg)' : 'none' // 모바일에서 그림자 추가
       }}>
         {/* Mobile header - 모바일에서만 표시 */}
         {!isDesktop && (
@@ -61,7 +72,8 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '1rem',
-              borderBottom: '1px solid var(--border-color)'
+              borderBottom: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-primary)' // 배경색 명시
             }}
           >
             <h2 style={{
@@ -73,14 +85,22 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
               Menu
             </h2>
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Close button clicked'); // 디버깅용
+                onClose();
+              }}
               style={{
                 padding: '0.5rem',
                 borderRadius: '0.375rem',
                 color: 'var(--text-secondary)',
                 backgroundColor: 'transparent',
                 border: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               <X size={20} />
@@ -89,7 +109,10 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
         )}
 
         {/* Navigation */}
-        <nav style={{ padding: '1rem' }}>
+        <nav style={{ 
+          padding: '1rem',
+          backgroundColor: 'var(--bg-primary)' // 배경색 명시
+        }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {NAVIGATION_ITEMS.map((item) => {
               const Icon = iconMap[item.icon];
@@ -98,7 +121,12 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavigation(item.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Menu item clicked:', item.id); // 디버깅용
+                    handleNavigation(item.id);
+                  }}
                   style={{
                     width: '100%',
                     display: 'flex',
@@ -112,7 +140,12 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                     color: isActive ? 'white' : 'var(--text-primary)',
                     border: 'none',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    position: 'relative', // 클릭 영역 확보
+                    zIndex: 1, // 클릭 가능하도록 z-index 설정
+                    // 터치 디바이스에서 더 나은 클릭 경험을 위한 스타일
+                    minHeight: '44px', // iOS 권장 최소 터치 영역
+                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)' // 터치 하이라이트
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
@@ -124,9 +157,20 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                       e.target.style.backgroundColor = 'transparent';
                     }
                   }}
+                  // 터치 이벤트도 추가 (모바일 호환성)
+                  onTouchStart={(e) => {
+                    if (!isActive) {
+                      e.target.style.backgroundColor = 'var(--bg-secondary)';
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (!isActive) {
+                      e.target.style.backgroundColor = 'transparent';
+                    }
+                  }}
                 >
-                  <Icon size={20} style={{ marginRight: '0.75rem' }} />
-                  {item.label}
+                  <Icon size={20} style={{ marginRight: '0.75rem', flexShrink: 0 }} />
+                  <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
                 </button>
               );
             })}
@@ -138,7 +182,8 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
           position: 'absolute',
           bottom: '1rem',
           left: '1rem',
-          right: '1rem'
+          right: '1rem',
+          backgroundColor: 'var(--bg-primary)' // 배경색 명시
         }}>
           <div style={{
             backgroundColor: 'var(--bg-secondary)',
