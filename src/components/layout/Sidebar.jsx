@@ -20,14 +20,12 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
   }, []);
 
   const handleNavigation = (pageId) => {
-    console.log('Navigation clicked:', pageId); // 디버깅용
+    console.log('Navigation clicked:', pageId);
     setCurrentPage(pageId);
     onClose();
   };
 
-  // 오버레이 클릭 핸들러 (사이드바 외부 클릭 시 닫기)
   const handleOverlayClick = (e) => {
-    // 오버레이 자체를 클릭했을 때만 닫기 (사이드바 내부 클릭은 무시)
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -35,7 +33,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
 
   return (
     <>
-      {/* Mobile overlay - z-index 수정 및 클릭 이벤트 개선 */}
+      {/* Mobile overlay */}
       {isOpen && !isDesktop && (
         <div 
           onClick={handleOverlayClick}
@@ -43,16 +41,16 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
             position: 'fixed',
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 39, // 사이드바보다 낮게 설정
+            zIndex: 39,
             cursor: 'pointer'
           }}
         />
       )}
 
-      {/* Sidebar - z-index 높게 설정 */}
+      {/* Sidebar */}
       <div style={{
         position: 'fixed',
-        top: '64px', // 헤더 높이만큼 아래에서 시작
+        top: '64px',
         left: 0,
         bottom: 0,
         width: '256px',
@@ -60,11 +58,11 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
         borderRight: '1px solid var(--border-color)',
         transform: (isDesktop || isOpen) ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.3s ease-in-out',
-        zIndex: 50, // 오버레이보다 높게 설정
+        zIndex: 50,
         overflowY: 'auto',
-        boxShadow: isOpen && !isDesktop ? 'var(--shadow-lg)' : 'none' // 모바일에서 그림자 추가
+        boxShadow: isOpen && !isDesktop ? 'var(--shadow-lg)' : 'none'
       }}>
-        {/* Mobile header - 모바일에서만 표시 */}
+        {/* Mobile header */}
         {!isDesktop && (
           <div 
             style={{
@@ -73,7 +71,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
               justifyContent: 'space-between',
               padding: '1rem',
               borderBottom: '1px solid var(--border-color)',
-              backgroundColor: 'var(--bg-primary)' // 배경색 명시
+              backgroundColor: 'var(--bg-primary)'
             }}
           >
             <h2 style={{
@@ -88,7 +86,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Close button clicked'); // 디버깅용
                 onClose();
               }}
               style={{
@@ -111,7 +108,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
         {/* Navigation */}
         <nav style={{ 
           padding: '1rem',
-          backgroundColor: 'var(--bg-primary)' // 배경색 명시
+          backgroundColor: 'var(--bg-primary)'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {NAVIGATION_ITEMS.map((item) => {
@@ -124,9 +121,9 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Menu item clicked:', item.id); // 디버깅용
                     handleNavigation(item.id);
                   }}
+                  className={`sidebar-nav-button ${isActive ? 'active' : ''}`}
                   style={{
                     width: '100%',
                     display: 'flex',
@@ -141,49 +138,46 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    position: 'relative', // 클릭 영역 확보
-                    zIndex: 1, // 클릭 가능하도록 z-index 설정
-                    // 터치 디바이스에서 더 나은 클릭 경험을 위한 스타일
-                    minHeight: '44px', // iOS 권장 최소 터치 영역
-                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)' // 터치 하이라이트
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.target.style.backgroundColor = 'var(--bg-secondary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.target.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                  // 터치 이벤트도 추가 (모바일 호환성)
-                  onTouchStart={(e) => {
-                    if (!isActive) {
-                      e.target.style.backgroundColor = 'var(--bg-secondary)';
-                    }
-                  }}
-                  onTouchEnd={(e) => {
-                    if (!isActive) {
-                      e.target.style.backgroundColor = 'transparent';
-                    }
+                    position: 'relative',
+                    zIndex: 1,
+                    minHeight: '44px',
+                    WebkitTapHighlightColor: 'transparent', // 터치 하이라이트 제거
+                    outline: 'none', // 포커스 아웃라인 제거
+                    textDecoration: 'none' // 텍스트 데코레이션 제거
                   }}
                 >
-                  <Icon size={20} style={{ marginRight: '0.75rem', flexShrink: 0 }} />
-                  <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                  <Icon 
+                    size={20} 
+                    style={{ 
+                      marginRight: '0.75rem', 
+                      flexShrink: 0,
+                      color: isActive ? 'white' : 'var(--text-primary)' // 아이콘 색상 명시
+                    }} 
+                  />
+                  <span 
+                    style={{ 
+                      flex: 1, 
+                      textAlign: 'left',
+                      color: isActive ? 'white' : 'var(--text-primary)', // 텍스트 색상 명시
+                      fontSize: '0.875rem',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
           </div>
         </nav>
 
-        {/* Version info - 하단 고정 */}
+        {/* Version info */}
         <div style={{
           position: 'absolute',
           bottom: '1rem',
           left: '1rem',
           right: '1rem',
-          backgroundColor: 'var(--bg-primary)' // 배경색 명시
+          backgroundColor: 'var(--bg-primary)'
         }}>
           <div style={{
             backgroundColor: 'var(--bg-secondary)',
@@ -208,6 +202,39 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* CSS 스타일 추가 */}
+      <style jsx>{`
+        .sidebar-nav-button:hover:not(.active) {
+          background-color: var(--bg-secondary) !important;
+        }
+        
+        .sidebar-nav-button:hover:not(.active) span,
+        .sidebar-nav-button:hover:not(.active) svg {
+          color: var(--text-primary) !important;
+        }
+        
+        .sidebar-nav-button.active {
+          background-color: var(--color-primary) !important;
+        }
+        
+        .sidebar-nav-button.active span,
+        .sidebar-nav-button.active svg {
+          color: white !important;
+        }
+        
+        .sidebar-nav-button:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        /* 터치 디바이스에서 추가 스타일 */
+        @media (hover: none) {
+          .sidebar-nav-button:hover {
+            background-color: inherit !important;
+          }
+        }
+      `}</style>
     </>
   );
 };
