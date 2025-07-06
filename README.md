@@ -3,7 +3,7 @@
 A modern, secure admin dashboard built with React and Firebase, featuring role-based access control, real-time data management, and comprehensive user administration for enterprise applications.
 
 🔗 Live Demo
-## 🌐 https://admin-dashboard-demo.vercel.app
+## 🌐 https://admin-dashboard-wine-omega-42.vercel.app
 
 ## ✨ Features
 
