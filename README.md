@@ -33,11 +33,11 @@ A modern, secure admin dashboard built with React and Firebase, featuring role-b
 Dashboard Overview User Management Role Permissions Mobile View Dark Theme
 ## 📸 Screenshots
 
-![Login Page](login-page.png)
-![Dashboard Overview](dashboard-overview.png)
-![Dark Theme](dark-theme.png)
-![User Management-create](user-management-create.png)
-![User Management-edit](user-management-edit.png)
+![Login Page]("https://github.com/user-attachments/assets/acd39d7d-ff10-41cd-9d27-6736639b01be")
+![Dashboard Overview]("https://github.com/user-attachments/assets/4dc9e143-2e79-4191-8d06-949068142454")
+![Dark Theme]("https://github.com/user-attachments/assets/f82629ba-e965-48da-af76-13e1e67651eb")
+![User Management-create]("https://github.com/user-attachments/assets/05eeab2a-3453-4296-865f-777e2f538896")
+![User Management-edit]("https://github.com/user-attachments/assets/92a358f5-39aa-4f97-bc2e-c6b750e8845c")
 
 ## 🛠️ Getting Started
 
