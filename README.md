@@ -3,7 +3,7 @@
 A modern, secure admin dashboard built with React and Firebase, featuring role-based access control, real-time data management, and comprehensive user administration for enterprise applications.
 
 🔗 Live Demo
-## 🌐 https://admin-dashboard-demo.vercel.app
+## 🌐 https://admin-dashboard-wine-omega-42.vercel.app
 
 ## ✨ Features
 
@@ -33,11 +33,11 @@ A modern, secure admin dashboard built with React and Firebase, featuring role-b
 Dashboard Overview User Management Role Permissions Mobile View Dark Theme
 ## 📸 Screenshots
 
-![Login Page](login-page.png)
-![Dashboard Overview](dashboard-overview.png)
-![Dark Theme](dark-theme.png)
-![User Management-create](user-management-create.png)
-![User Management-edit](user-management-edit.png)
+![Login Page](https://github.com/user-attachments/assets/ef4aa6ec-fd53-421c-96da-9750e8d221fc)
+![Dashboard Overview](https://github.com/user-attachments/assets/b65df87f-dac7-4e4d-8753-b3799a418dfb)
+![Dark Theme](https://github.com/user-attachments/assets/33e9fdf2-94b1-4087-b26c-c6a78526127d)
+![User Management-create](https://github.com/user-attachments/assets/d44a1a72-cd9b-42dd-8893-a66310c3e9f5)
+![User Management-edit](https://github.com/user-attachments/assets/e8ecf8aa-4161-4708-8080-fa65630df452)
 
 ## 🛠️ Getting Started
 
