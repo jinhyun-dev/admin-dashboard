@@ -16,15 +16,15 @@ export const useFirebaseAuth = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 로그인 로그 추가 함수
+  // Function to add login log
   const addLoginLog = async (userId, loginMethod = 'email') => {
     try {
       await addDoc(collection(db, 'loginLogs'), {
         userId: userId,
         loginMethod: loginMethod, // 'email', 'google', etc.
         timestamp: new Date().toISOString(),
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD 형식
-        month: new Date().toISOString().substr(0, 7), // YYYY-MM 형식
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        month: new Date().toISOString().substr(0, 7), // YYYY-MM format
       });
       console.log('Login log added successfully');
     } catch (error) {
@@ -35,10 +35,10 @@ export const useFirebaseAuth = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Original Role 계산 (이메일 기반)
+        // Calculate Original Role (based on email)
         const originalRole = getOriginalRole(firebaseUser.email);
         
-        // Firestore에서 사용자 추가 정보 가져오기
+        // Get additional user information from Firestore
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         const userData = userDoc.exists() ? userDoc.data() : {};
         
@@ -47,8 +47,8 @@ export const useFirebaseAuth = () => {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
-          originalRole: originalRole, // 이메일 기반 Original Role
-          role: originalRole, // 초기에는 Original Role과 동일
+          originalRole: originalRole, // Email-based Original Role
+          role: originalRole, // Initially same as Original Role
           ...userData
         };
         
@@ -63,7 +63,7 @@ export const useFirebaseAuth = () => {
     return () => unsubscribe();
   }, []);
 
-  // 이메일/비밀번호 회원가입
+  // Email/password sign up
   const signUp = async (email, password, displayName) => {
     try {
       setLoading(true);
@@ -71,23 +71,23 @@ export const useFirebaseAuth = () => {
       
       const result = await createUserWithEmailAndPassword(auth, email, password);
       
-      // 프로필 업데이트
+      // Update profile
       await updateProfile(result.user, { displayName });
       
-      // Original Role 계산 (이메일 기반)
+      // Calculate Original Role (based on email)
       const originalRole = getOriginalRole(email);
       
-      // Firestore에 사용자 정보 저장
+      // Save user information to Firestore
       await setDoc(doc(db, 'users', result.user.uid), {
         email,
         displayName,
-        role: originalRole, // Original Role로 설정
-        originalRole: originalRole, // Original Role 저장
+        role: originalRole, // Set as Original Role
+        originalRole: originalRole, // Store Original Role
         createdAt: new Date().toISOString(),
         status: 'active'
       });
       
-      // 회원가입 후 자동 로그인 로그 추가
+      // Add login log after automatic login post-signup
       await addLoginLog(result.user.uid, 'email');
       
       return result.user;
@@ -99,7 +99,7 @@ export const useFirebaseAuth = () => {
     }
   };
 
-  // 이메일/비밀번호 로그인
+  // Email/password sign in
   const signIn = async (email, password) => {
     try {
       setLoading(true);
@@ -107,7 +107,7 @@ export const useFirebaseAuth = () => {
       
       const result = await signInWithEmailAndPassword(auth, email, password);
       
-      // 로그인 로그 추가
+      // Add login log
       await addLoginLog(result.user.uid, 'email');
       
       return result.user;
@@ -119,7 +119,7 @@ export const useFirebaseAuth = () => {
     }
   };
 
-  // Google 로그인
+  // Google sign in
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
@@ -127,25 +127,25 @@ export const useFirebaseAuth = () => {
       
       const result = await signInWithPopup(auth, googleProvider);
       
-      // Original Role 계산 (이메일 기반)
+      // Calculate Original Role (based on email)
       const originalRole = getOriginalRole(result.user.email);
       
-      // 처음 로그인하는 사용자라면 Firestore에 정보 저장
+      // Save information to Firestore if first time login
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
       if (!userDoc.exists()) {
         await setDoc(doc(db, 'users', result.user.uid), {
           email: result.user.email,
           displayName: result.user.displayName,
           photoURL: result.user.photoURL,
-          role: originalRole, // Original Role로 설정
-          originalRole: originalRole, // Original Role 저장
+          role: originalRole, // Set as Original Role
+          originalRole: originalRole, // Store Original Role
           createdAt: new Date().toISOString(),
           status: 'active',
           provider: 'google'
         });
       }
       
-      // 로그인 로그 추가
+      // Add login log
       await addLoginLog(result.user.uid, 'google');
       
       return result.user;
@@ -157,7 +157,7 @@ export const useFirebaseAuth = () => {
     }
   };
 
-  // 로그아웃
+  // Logout
   const logout = async () => {
     try {
       setLoading(true);
@@ -170,13 +170,13 @@ export const useFirebaseAuth = () => {
     }
   };
 
-  // 사용자 역할 업데이트 (관리자 전용) - 수정된 버전
+  // Update user role (admin only) - modified version
   const updateUserRole = async (userId, newRole) => {
     try {
       setError(null);
       console.log('updateUserRole called:', { userId, newRole, currentUserId: user?.uid });
       
-      // Firestore 업데이트
+      // Update Firestore
       await setDoc(doc(db, 'users', userId), {
         role: newRole,
         updatedAt: new Date().toISOString()
@@ -184,7 +184,7 @@ export const useFirebaseAuth = () => {
       
       console.log('Firestore updated successfully');
       
-      // 현재 사용자의 역할이 업데이트되었다면 상태 즉시 갱신
+      // Immediately update state if current user's role was updated
       if (userId === user?.uid) {
         console.log('Updating current user role from', user.role, 'to', newRole);
         setUser(prev => ({ 

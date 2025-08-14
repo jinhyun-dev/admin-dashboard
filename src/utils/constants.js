@@ -11,13 +11,13 @@ export const NAVIGATION_ITEMS = [
   }
 ];
 
-// 요구사항에 맞게 수정된 초기 사용자 데이터
+// Initial user data modified according to requirements
 export const INITIAL_USERS = [
   {
     id: 1,
     name: 'John Doe',
     email: 'john.doe@example.com',
-    role: 'Admin', // Admin으로 변경
+    role: 'Admin', // Changed to Admin
     status: 'active',
     createdAt: '2024-01-15'
   },
@@ -25,7 +25,7 @@ export const INITIAL_USERS = [
     id: 2,
     name: 'Jane Smith',
     email: 'jane.smith@example.com',
-    role: 'Admin', // Admin으로 변경
+    role: 'Admin', // Changed to Admin
     status: 'active',
     createdAt: '2024-01-16'
   },
@@ -33,7 +33,7 @@ export const INITIAL_USERS = [
     id: 3,
     name: 'Mike Johnson',
     email: 'mike.johnson@example.com',
-    role: 'Admin', // Admin으로 변경
+    role: 'Admin', // Changed to Admin
     status: 'inactive',
     createdAt: '2024-01-17'
   },
@@ -41,7 +41,7 @@ export const INITIAL_USERS = [
     id: 4,
     name: 'Sarah Wilson',
     email: 'sarah.wilson@example.com',
-    role: 'Admin', // Admin으로 변경
+    role: 'Admin', // Changed to Admin
     status: 'active',
     createdAt: '2024-01-18'
   },
@@ -49,11 +49,11 @@ export const INITIAL_USERS = [
     id: 5,
     name: 'David Brown',
     email: 'david.brown@example.com',
-    role: 'Admin', // Admin으로 변경
+    role: 'Admin', // Changed to Admin
     status: 'active',
     createdAt: '2024-01-19'
   }
 ];
 
-export const USER_ROLES = ['Super Admin', 'Admin', 'Manager', 'User', 'Viewer']; // 권한 시스템과 통일
+export const USER_ROLES = ['Super Admin', 'Admin', 'Manager', 'User', 'Viewer']; // Unified with permission system
 export const USER_STATUSES = ['active', 'inactive'];

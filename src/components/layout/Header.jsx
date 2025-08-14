@@ -15,14 +15,14 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  // 설정 데이터 (Language 제거)
+  // Settings data (Language removed)
   const [settings, setSettings] = useState({
     notifications: true,
     emailAlerts: true,
     darkMode: theme === 'dark'
   });
 
-  // 알림 데이터
+  // Notification data
   const notifications = [
     { id: 1, title: 'New user registered', message: 'Jane Smith joined the platform', time: '2 minutes ago', unread: true },
     { id: 2, title: 'System update', message: 'Server maintenance completed', time: '1 hour ago', unread: true },
@@ -31,7 +31,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  // 사용 가능한 역할 목록 가져오기
+  // Get available roles list
   const availableRoles = getAvailableRoles(originalRole);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 외부 클릭 시 드롭다운 닫기
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.notification-dropdown')) {
@@ -62,12 +62,12 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchValue.trim()) {
-      // Users 페이지로 이동
+      // Navigate to Users page
       if (currentPage !== 'users') {
         setCurrentPage('users');
       }
       
-      // 검색 이벤트 발생 (약간의 지연을 두어 페이지 전환 후 검색 실행)
+      // Trigger search event (with slight delay to allow page transition before search execution)
       setTimeout(() => {
         const searchEvent = new CustomEvent('globalSearch', {
           detail: { searchTerm: searchValue.trim() }
@@ -77,19 +77,19 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     }
   };
 
-  // 실시간 검색 (입력할 때마다)
+  // Real-time search (on every input)
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchValue(value);
     
-    // Users 페이지에서만 실시간 검색 적용
+    // Apply real-time search only on Users page
     if (currentPage === 'users' && value.length > 0) {
       const searchEvent = new CustomEvent('globalSearch', {
         detail: { searchTerm: value }
       });
       window.dispatchEvent(searchEvent);
     } else if (value.length === 0) {
-      // 검색어가 비어있으면 검색 초기화
+      // Reset search when search term is empty
       const searchEvent = new CustomEvent('globalSearch', {
         detail: { searchTerm: '' }
       });
@@ -128,7 +128,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   };
 
   const handleProfileSave = (updatedProfile) => {
-    // Firebase를 통해 프로필 업데이트 로직이 필요하면 여기에 추가
+    // Add logic to update profile through Firebase if needed
     setShowProfileModal(false);
     alert('Profile updated successfully!');
   };
@@ -136,7 +136,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
   const handleSettingsSave = (updatedSettings) => {
     setSettings(updatedSettings);
     
-    // 다크모드 설정 변경 시 테마 업데이트
+    // Update theme when dark mode setting changes
     if (updatedSettings.darkMode !== (theme === 'dark')) {
       toggleTheme();
     }
@@ -145,25 +145,25 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
     alert('Settings saved successfully!');
   };
 
-  // 역할 전환 핸들러 - 수정된 버전 (Users와 Dashboard 페이지에서 새로고침 추가)
+  // Role switch handler - modified version (added refresh for Users and Dashboard pages)
   const handleRoleSwitch = (newRole) => {
     const success = switchRole(newRole);
     if (success) {
       setShowUserMenu(false);
       
-      // 역할 변경 이벤트 발생
+      // Trigger role change event
       const roleChangeEvent = new CustomEvent('roleChanged', {
         detail: { newRole: newRole, oldRole: currentRole }
       });
       window.dispatchEvent(roleChangeEvent);
       
-      // Users 페이지 또는 Dashboard 페이지에서 역할 변경 시 새로고침
+      // Refresh when role changes on Users or Dashboard page
       if (currentPage === 'users' || currentPage === 'dashboard') {
         setTimeout(() => {
           window.location.reload();
         }, 100);
       } else {
-        // 다른 페이지에서는 기존처럼 alert만
+        // Just show alert on other pages as before
         setTimeout(() => {
           alert(`Role switched to: ${newRole}`);
         }, 100);
@@ -287,7 +287,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
               </div>
             )}
 <div className="flex items-center" style={{ gap: '1rem' }}>
-              {/* 알림 버튼 */}
+              {/* Notification button */}
               <div className="notification-dropdown" style={{ position: 'relative' }}>
                 <button 
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -424,7 +424,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
 
-              {/* 사용자 메뉴 */}
+              {/* User menu */}
               <div className="user-menu-dropdown" style={{ position: 'relative' }}>
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -510,7 +510,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       }}>
                         {currentUser?.email || 'No Email'}
                       </p>
-                      {/* Original Role과 Current Role 표시 */}
+                      {/* Display Original Role and Current Role */}
                       <div style={{
                         marginTop: '0.5rem',
                         fontSize: '0.75rem',
@@ -577,7 +577,7 @@ const Header = ({ onMenuClick, sidebarOpen, onSearch, currentPage, setCurrentPag
                       </button>
                     </div>
                     
-                    {/* 역할 전환 섹션 - 수정된 부분 */}
+                    {/* Role switching section - modified part */}
                     <div style={{
                       padding: '0.5rem',
                       borderTop: '1px solid var(--border-color)',
@@ -922,7 +922,7 @@ const ProfileForm = ({ profile, onSave, onCancel }) => {
   );
 };
 
-// Settings Form Component (Language 기능 제거)
+// Settings Form Component (Language functionality removed)
 const SettingsForm = ({ settings, onSave, onCancel }) => {
   const [formData, setFormData] = useState(settings);
 

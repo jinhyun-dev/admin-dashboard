@@ -14,7 +14,7 @@ const Users = () => {
   const { toasts, addToast, removeToast } = useToast();
   const { currentUser, originalRole, currentRole } = useAuth();
   
-  // 강제 리렌더링을 위한 reducer
+  // Reducer for forcing re-renders
   const [, forceUpdate] = useReducer(x => x + 1, 0);
   
   const {
@@ -31,28 +31,28 @@ const Users = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [trackedRole, setTrackedRole] = useState(null);
-  const [renderKey, setRenderKey] = useState(0); // 추가: 강제 리렌더링용
+  const [renderKey, setRenderKey] = useState(0); // Added: for forced re-rendering
   const userTableRef = useRef();
 
-  // currentRole이 변경될 때 감지하고 강제 리렌더링 (개선된 버전)
+  // Detect when currentRole changes and force re-render (improved version)
   useEffect(() => {
     console.log('Users component - Role changed from', trackedRole, 'to', currentRole);
     console.log('Users component - useEffect triggered with currentRole:', currentRole);
     console.log('Users component - currentUser?.role:', currentUser?.role);
     
-    // 조건문 제거하여 항상 업데이트
+    // Remove condition to always update
     setTrackedRole(currentRole);
     setRenderKey(prev => prev + 1);
     forceUpdate();
-  }, [currentRole, currentUser?.role]); // trackedRole 의존성 제거
+  }, [currentRole, currentUser?.role]); // Remove trackedRole dependency
 
-  // 추가 강제 업데이트
+  // Additional forced update
   useEffect(() => {
     console.log('Users component - Force update for currentRole:', currentRole);
     forceUpdate();
   }, [currentRole]);
 
-  // Header에서 역할 변경 시 즉시 업데이트를 위한 이벤트 리스너
+  // Event listener for immediate update when role changes from Header
   useEffect(() => {
     const handleRoleChange = (event) => {
       console.log('Users component - Role change event detected:', event.detail);
@@ -64,7 +64,7 @@ const Users = () => {
     return () => window.removeEventListener('roleChanged', handleRoleChange);
   }, []);
 
-  // 추가 디버깅용 useEffect들
+  // Additional useEffects for debugging
   useEffect(() => {
     console.log('Users component - currentUser changed:', currentUser);
     console.log('Users component - currentRole from currentUser:', currentUser?.role);
@@ -74,7 +74,7 @@ const Users = () => {
     console.log('Users component - Direct currentRole changed:', currentRole);
   }, [currentRole]);
 
-  // useMemo를 사용하여 권한 계산을 최적화 (CRUD 모든 권한 포함)
+  // Optimize permission calculation using useMemo (including all CRUD permissions)
   const permissions = useMemo(() => {
     const role = currentRole;
     console.log('Users component - calculating permissions for role:', role);
@@ -87,11 +87,11 @@ const Users = () => {
       canBulkActions: hasPermission(role, PERMISSIONS.BULK_ACTIONS),
       canExportData: hasPermission(role, PERMISSIONS.EXPORT_DATA)
     };
-  }, [currentRole, trackedRole, renderKey]); // renderKey 추가
+  }, [currentRole, trackedRole, renderKey]); // Add renderKey
 
   const { canCreateUsers, canReadUsers, canEditUsers, canDeleteUsers, canBulkActions, canExportData } = permissions;
 
-  // 디버깅용 로그
+  // Debug logging
   console.log('Users component render - currentUser:', currentUser);
   console.log('Users component render - currentRole:', currentRole);
   console.log('Users component render - originalRole:', originalRole);
@@ -127,7 +127,7 @@ const Users = () => {
       return;
     }
 
-    // Manager 권한 체크: 자신보다 높거나 같은 레벨 사용자 관리 불가
+    // Manager permission check: cannot manage users with higher or equal level
     if (!canManageUser(currentRole, user.role)) {
       addToast(`You cannot manage users with role: ${user.role}`, 'error');
       return;
@@ -143,7 +143,7 @@ const Users = () => {
       return;
     }
 
-    // 삭제하려는 사용자의 역할 확인
+    // Check role of user to be deleted
     const userToDelete = users.find(u => u.id === userId);
     if (userToDelete && !canManageUser(currentRole, userToDelete.role)) {
       addToast(`You cannot delete users with role: ${userToDelete.role}`, 'error');
@@ -187,7 +187,7 @@ const Users = () => {
     setEditingUser(null);
   };
 
-  // 로딩 상태
+  // Loading state
   if (loading) {
     return (
       <div style={{
@@ -202,7 +202,7 @@ const Users = () => {
     );
   }
 
-  // 에러 상태
+  // Error state
   if (error) {
     return (
       <div style={{
@@ -265,7 +265,7 @@ const Users = () => {
           }}>
             Manage your application users and their permissions.
           </p>
-          {/* CRUD 권한 정보 표시 (요구사항에 따라 추가) */}
+          {/* Display CRUD permission information (added per requirements) */}
           <p 
             key={`permissions-${currentRole}-${renderKey}`}
             style={{
@@ -403,11 +403,11 @@ const Users = () => {
   );
 };
 
-// Wrapper 컴포넌트로 역할 변경 시 완전한 리마운트 보장
+// Wrapper component to ensure complete remount when role changes
 const UsersWrapper = () => {
   const { currentRole, currentUser } = useAuth();
   
-  // currentRole이 null이면 로딩 상태 표시
+  // Show loading state if currentRole is null
   if (!currentRole || !currentUser) {
     return (
       <div style={{
@@ -422,7 +422,7 @@ const UsersWrapper = () => {
     );
   }
   
-  // currentRole이 변경될 때마다 완전히 새로운 Users 컴포넌트를 마운트
+  // Mount a completely new Users component whenever currentRole changes
   return <Users key={`users-wrapper-${currentRole}-${currentUser?.id}`} />;
 };
 

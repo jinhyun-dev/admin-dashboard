@@ -1,9 +1,9 @@
-// hooks/useAuth.js (수정된 버전)
+// hooks/useAuth.js (modified version)
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useFirebaseAuth } from './useFirebaseAuth';
 import { ROLES, getOriginalRole, canSwitchToRole } from '../utils/permissions'; 
 
-// Firebase 인증을 사용하는 useAuth 훅
+// useAuth hook using Firebase authentication
 export const useAuth = () => {
   const {
     user,
@@ -17,39 +17,39 @@ export const useAuth = () => {
     clearError
   } = useFirebaseAuth();
 
-  // Current Role 상태 (임시 역할)
+  // Current Role state (temporary role)
   const [currentRole, setCurrentRole] = useState(null);
 
-  // Original Role 계산 (이메일 기반 고정값)
+  // Original Role calculation (fixed value based on email)
   const originalRole = useMemo(() => {
     if (!user?.email) return null;
     return getOriginalRole(user.email);
   }, [user?.email]);
 
-  // 사용자 로그인/로그아웃 시 Current Role 관리
+  // Manage Current Role on user login/logout
   useEffect(() => {
     if (user && originalRole) {
-      // 로그인 시: localStorage에서 저장된 역할 확인
+      // On login: check saved role from localStorage
       const savedCurrentRole = localStorage.getItem(`currentRole_${user.uid}`);
       
       if (savedCurrentRole && canSwitchToRole(originalRole, savedCurrentRole)) {
-        // 저장된 역할이 유효하면 사용
+        // Use saved role if valid
         console.log('useAuth - Using saved currentRole:', savedCurrentRole);
         setCurrentRole(savedCurrentRole);
       } else {
-        // 저장된 역할이 없거나 유효하지 않으면 originalRole 사용
+        // Use originalRole if no saved role or invalid
         console.log('useAuth - Setting currentRole to originalRole:', originalRole);
         setCurrentRole(originalRole);
         localStorage.setItem(`currentRole_${user.uid}`, originalRole);
       }
     } else if (!user) {
-      // 로그아웃 시: Current Role 초기화
+      // On logout: reset Current Role
       setCurrentRole(null);
       console.log('useAuth - User logged out, clearing currentRole');
     }
   }, [user?.uid, originalRole]);
 
-  // currentRole이 변경될 때마다 localStorage에 저장 (사용자별로)
+  // Save to localStorage whenever currentRole changes (per user)
   useEffect(() => {
     if (currentRole && user?.uid) {
       localStorage.setItem(`currentRole_${user.uid}`, currentRole);
@@ -57,7 +57,7 @@ export const useAuth = () => {
     }
   }, [currentRole, user?.uid]);
 
-  // useMemo를 사용하여 currentUser 객체 생성
+  // Create currentUser object using useMemo
   const currentUser = useMemo(() => {
     if (!user || !originalRole || !currentRole) return null;
     
@@ -65,8 +65,8 @@ export const useAuth = () => {
       id: user.uid,
       name: user.displayName || 'Unknown User',
       email: user.email,
-      originalRole: originalRole, // 고정값
-      role: currentRole, // 현재 역할 (임시)
+      originalRole: originalRole, // fixed value
+      role: currentRole, // current role (temporary)
       avatar: user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U',
       photoURL: user.photoURL
     };
@@ -75,7 +75,7 @@ export const useAuth = () => {
     return userObj;
   }, [user?.uid, user?.displayName, user?.email, user?.photoURL, originalRole, currentRole]);
 
-  // 역할 전환 함수 (임시 역할 변경)
+  // Role switching function (temporary role change)
   const switchRole = useCallback((newRole) => {
     if (!originalRole) {
       console.error('useAuth - Cannot switch role: originalRole not set');
@@ -92,22 +92,22 @@ export const useAuth = () => {
     return true;
   }, [originalRole, currentRole]);
 
-  // Firebase 사용자 역할 업데이트 함수 (실제 DB 업데이트)
+  // Firebase user role update function (actual DB update)
   const handleUpdateUserRole = useCallback(async (userId, newRole) => {
     console.log('useAuth - updateUserRole called with:', userId, newRole);
     await updateUserRole(userId, newRole);
     console.log('useAuth - updateUserRole completed');
   }, [updateUserRole]);
 
-  // 로그아웃 시 currentRole 초기화
+  // Reset currentRole on logout
   const handleLogout = useCallback(async () => {
     try {
-      // 사용자별 localStorage 클리어
+      // Clear user-specific localStorage
       if (user?.uid) {
         localStorage.removeItem(`currentRole_${user.uid}`);
       }
       
-      // 로그아웃 실행
+      // Execute logout
       await logout();
       
       console.log('useAuth - Logout completed, currentRole cleared');
@@ -117,7 +117,7 @@ export const useAuth = () => {
     }
   }, [logout, user?.uid]);
 
-  // 디버깅을 위한 콘솔 로그
+  // Console logs for debugging
   console.log('useAuth - currentUser:', currentUser);
   console.log('useAuth - originalRole:', originalRole);
   console.log('useAuth - currentRole:', currentRole);
@@ -131,7 +131,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signInWithGoogle,
-    logout: handleLogout, // 수정된 로그아웃 함수 사용
+    logout: handleLogout, // use modified logout function
     switchRole,
     updateUserRole: handleUpdateUserRole,
     clearError

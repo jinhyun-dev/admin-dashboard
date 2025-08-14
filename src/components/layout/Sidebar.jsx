@@ -141,9 +141,9 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                     position: 'relative',
                     zIndex: 1,
                     minHeight: '44px',
-                    WebkitTapHighlightColor: 'transparent', // 터치 하이라이트 제거
-                    outline: 'none', // 포커스 아웃라인 제거
-                    textDecoration: 'none' // 텍스트 데코레이션 제거
+                    WebkitTapHighlightColor: 'transparent', // Remove touch highlight
+                    outline: 'none', // Remove focus outline
+                    textDecoration: 'none' // Remove text decoration
                   }}
                 >
                   <Icon 
@@ -151,14 +151,14 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
                     style={{ 
                       marginRight: '0.75rem', 
                       flexShrink: 0,
-                      color: isActive ? 'white' : 'var(--text-primary)' // 아이콘 색상 명시
+                      color: isActive ? 'white' : 'var(--text-primary)' // Explicit icon color
                     }} 
                   />
                   <span 
                     style={{ 
                       flex: 1, 
                       textAlign: 'left',
-                      color: isActive ? 'white' : 'var(--text-primary)', // 텍스트 색상 명시
+                      color: isActive ? 'white' : 'var(--text-primary)', // Explicit text color
                       fontSize: '0.875rem',
                       fontWeight: '500'
                     }}
@@ -203,7 +203,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
         </div>
       </div>
 
-      {/* CSS 스타일 추가 */}
+      {/* Add CSS styles */}
       <style jsx>{`
         .sidebar-nav-button:hover:not(.active) {
           background-color: var(--bg-secondary) !important;
@@ -228,7 +228,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, onClose }) => {
           box-shadow: none !important;
         }
 
-        /* 터치 디바이스에서 추가 스타일 */
+        /* Additional styles for touch devices */
         @media (hover: none) {
           .sidebar-nav-button:hover {
             background-color: inherit !important;

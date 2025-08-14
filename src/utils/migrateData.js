@@ -2,7 +2,7 @@ import { collection, addDoc, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getOriginalRole } from './permissions';
 
-// 샘플 사용자 데이터 (요구사항에 맞게 수정)
+// Sample user data
 const SAMPLE_USERS = [
   {
     email: 'john.doe@example.com',
@@ -41,23 +41,23 @@ const SAMPLE_USERS = [
   }
 ];
 
-// 초기 사용자 데이터를 Firestore로 마이그레이션
+// Migrate initial user data to Firestore
 export const migrateInitialUsers = async () => {
   try {
-    console.log('마이그레이션 시작: 샘플 사용자 데이터 확인');
+    console.log('Migration started: Checking sample user data');
     
-    // 각 샘플 사용자가 이미 존재하는지 확인하고 없으면 추가
+    // Check if each sample user already exists and add if not
     for (const sampleUser of SAMPLE_USERS) {
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const existingUser = usersSnapshot.docs.find(doc => 
+      const existingUser = usersSnapshot.docs.find(doc =>
         doc.data().email === sampleUser.email
       );
-      
+
       if (!existingUser) {
-        // Original Role 계산 (이메일 기반)
+        // Calculate Original Role (based on email)
         const originalRole = getOriginalRole(sampleUser.email);
         
-        // 고유 ID 생성 (이메일 기반)
+        // Generate unique ID (based on email)
         const userId = sampleUser.email.replace(/[@.]/g, '_');
         
         await setDoc(doc(db, 'users', userId), {
@@ -67,14 +67,14 @@ export const migrateInitialUsers = async () => {
           updatedAt: new Date().toISOString()
         });
         
-        console.log(`샘플 사용자 추가됨: ${sampleUser.displayName} (${originalRole})`);
+        console.log(`Sample user added: ${sampleUser.displayName} (${originalRole})`);
       } else {
-        console.log(`샘플 사용자 이미 존재: ${sampleUser.displayName}`);
+        console.log(`Sample user already exists: ${sampleUser.displayName}`);
       }
     }
     
-    console.log('마이그레이션 완료: 샘플 사용자 데이터 처리됨');
+    console.log('Migration completed: Sample user data processed');
   } catch (error) {
-    console.error('마이그레이션 실패:', error);
+    console.error('Migration failed:', error);
   }
 };

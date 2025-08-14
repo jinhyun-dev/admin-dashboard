@@ -18,20 +18,20 @@ const UserTable = forwardRef(({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // 외부에서 검색어를 설정할 수 있도록 하는 함수
+  // Function to allow external setting of search term
   useImperativeHandle(ref, () => ({
     setExternalSearch: (term) => {
       setSearchTerm(term);
-      setCurrentPage(1); // 검색 시 첫 페이지로 이동
+      setCurrentPage(1); // Navigate to first page when searching
     }
   }));
 
-  // 글로벌 검색 이벤트 리스너
+  // Global search event listener
   useEffect(() => {
     const handleGlobalSearch = (event) => {
       const { searchTerm: globalSearchTerm } = event.detail;
       setSearchTerm(globalSearchTerm);
-      setCurrentPage(1); // 검색 시 첫 페이지로 이동
+      setCurrentPage(1); // Navigate to first page when searching
     };
 
     window.addEventListener('globalSearch', handleGlobalSearch);
@@ -67,14 +67,14 @@ const UserTable = forwardRef(({
   const handleLocalSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    setCurrentPage(1); // Navigate to first page when searching
   };
 
   const clearSearch = () => {
     setSearchTerm('');
     setCurrentPage(1);
     
-    // 글로벌 검색도 클리어
+    // Clear global search as well
     const searchEvent = new CustomEvent('globalSearch', {
       detail: { searchTerm: '' }
     });

@@ -101,7 +101,7 @@ const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ marginBottom: '1.5rem' }}>
-          {/* Name Field (회원가입 시에만) */}
+          {/* Name Field (Only for Sign Up) */}
           {isSignUp && (
             <div style={{ marginBottom: '1rem' }}>
               <label style={{

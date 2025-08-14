@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   onSnapshot,
   query,
   where,
-  orderBy 
+  orderBy
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -18,11 +18,10 @@ export const useFirestore = (collectionName) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 실시간 데이터 구독
+  // Real-time data subscription
   useEffect(() => {
     const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, 
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
         const items = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -40,7 +39,7 @@ export const useFirestore = (collectionName) => {
     return () => unsubscribe();
   }, [collectionName]);
 
-  // 문서 추가
+  // Add document
   const addDocument = async (data) => {
     try {
       setError(null);
@@ -55,7 +54,7 @@ export const useFirestore = (collectionName) => {
     }
   };
 
-  // 문서 업데이트
+  // Update document
   const updateDocument = async (id, data) => {
     try {
       setError(null);
@@ -69,7 +68,7 @@ export const useFirestore = (collectionName) => {
     }
   };
 
-  // 문서 삭제
+  // Delete document
   const deleteDocument = async (id) => {
     try {
       setError(null);
@@ -90,7 +89,7 @@ export const useFirestore = (collectionName) => {
   };
 };
 
-// 사용자 관리 전용 훅
+// User management specific hook
 export const useUsers = () => {
   const {
     data: users,
@@ -101,7 +100,7 @@ export const useUsers = () => {
     deleteDocument
   } = useFirestore('users');
 
-  // 사용자 생성 (관리자용)
+  // Create user (for admin)
   const createUser = async (userData) => {
     const userDoc = {
       email: userData.email,
@@ -113,7 +112,7 @@ export const useUsers = () => {
     return await addDocument(userDoc);
   };
 
-  // 사용자 정보 업데이트
+  // Update user information
   const updateUser = async (id, userData) => {
     const updateData = {
       displayName: userData.name,
@@ -123,12 +122,12 @@ export const useUsers = () => {
     return await updateDocument(id, updateData);
   };
 
-  // 사용자 삭제
+  // Delete user
   const deleteUser = async (id) => {
     return await deleteDocument(id);
   };
 
-  // 포맷된 사용자 데이터 반환
+  // Return formatted user data
   const formattedUsers = users.map(user => ({
     id: user.id,
     name: user.displayName || 'Unknown User',
