@@ -10,11 +10,11 @@ import { canAccessPage } from './utils/permissions';
 import { migrateInitialUsers } from './utils/migrateData';
 
 function App() {
-  // 로그인된 사용자만 localStorage에서 페이지 정보를 가져옴
-  const [currentPage, setCurrentPage] = useState('dashboard'); // 기본값은 dashboard
+  // Get page information from localStorage only for logged-in users
+  const [currentPage, setCurrentPage] = useState('dashboard'); // Default is dashboard
   const { currentUser, isLoading } = useAuth();
 
-  // 로그인된 사용자에 대해서만 localStorage 페이지 복원
+  // Restore localStorage page only for logged-in users
   useEffect(() => {
     if (currentUser) {
       const savedPage = localStorage.getItem('currentPage');
@@ -24,14 +24,14 @@ function App() {
     }
   }, [currentUser]);
 
-  // 페이지가 변경될 때마다 localStorage에 저장 (로그인된 상태에서만)
+  // Save to localStorage whenever page changes (only when logged in)
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentPage', currentPage);
     }
   }, [currentPage, currentUser]);
 
-  // 마이그레이션 실행 (한 번만)
+  // Run migration (only once)
   useEffect(() => {
     if (currentUser) {
       migrateInitialUsers();
@@ -39,7 +39,7 @@ function App() {
   }, [currentUser]);
 
   const renderPage = () => {
-    // 권한 체크
+    // Permission check
     if (!canAccessPage(currentUser?.role, currentPage)) {
       return (
         <div style={{ 
@@ -99,7 +99,7 @@ function App() {
     }
   };
 
-  // 로딩 중일 때만 로딩 화면 표시
+  // Show loading screen only while loading
   if (isLoading) {
     return (
       <ThemeProvider>
@@ -130,7 +130,7 @@ function App() {
     );
   }
 
-  // 로그인하지 않은 경우 - 항상 로그인 페이지 표시
+  // If not logged in - always show login page
   if (!currentUser) {
     return (
       <ThemeProvider>
@@ -139,7 +139,7 @@ function App() {
     );
   }
 
-  // 로그인된 사용자 UI
+  // Logged-in user UI
   return (
     <ThemeProvider>
       <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>

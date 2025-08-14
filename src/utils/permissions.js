@@ -1,4 +1,4 @@
-// 역할별 권한 정의
+// Role-based permission definitions
 export const ROLES = {
   SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Admin', 
@@ -7,7 +7,7 @@ export const ROLES = {
   VIEWER: 'Viewer'
 };
 
-// 역할 레벨 정의 (숫자가 낮을수록 높은 권한)
+// Role level definitions (lower numbers indicate higher authority)
 export const ROLE_LEVELS = {
   [ROLES.SUPER_ADMIN]: 1,
   [ROLES.ADMIN]: 2,
@@ -16,40 +16,40 @@ export const ROLE_LEVELS = {
   [ROLES.VIEWER]: 5
 };
 
-// 특정 계정별 Original Role 정의
+// Original Role definitions for specific accounts
 export const ACCOUNT_ORIGINAL_ROLES = {
-  'jinhyunkim319@gmail.com': ROLES.SUPER_ADMIN, // 개발자 계정
+  'jinhyunkim319@gmail.com': ROLES.SUPER_ADMIN, // Developer account
   'john.doe@example.com': ROLES.ADMIN,
-  'jane.smith@example.com': ROLES.ADMIN, // 수정: User -> Admin
-  'mike.johnson@example.com': ROLES.ADMIN, // 수정: Manager -> Admin
-  'sarah.wilson@example.com': ROLES.ADMIN, // 수정: User -> Admin
-  'david.brown@example.com': ROLES.ADMIN, // 수정: User -> Admin
-  'test@example.com': ROLES.MANAGER // 테스트 계정 - Manager
+  'jane.smith@example.com': ROLES.ADMIN, // Modified: User -> Admin
+  'mike.johnson@example.com': ROLES.ADMIN, // Modified: Manager -> Admin
+  'sarah.wilson@example.com': ROLES.ADMIN, // Modified: User -> Admin
+  'david.brown@example.com': ROLES.ADMIN, // Modified: User -> Admin
+  'test@example.com': ROLES.MANAGER // Test account - Manager
 };
 
 export const PERMISSIONS = {
-  // 대시보드 권한
+  // Dashboard permissions
   VIEW_DASHBOARD: 'view_dashboard',
   VIEW_ANALYTICS: 'view_analytics',
   
-  // 사용자 관리 권한
+  // User management permissions
   VIEW_USERS: 'view_users',
   CREATE_USERS: 'create_users',
   EDIT_USERS: 'edit_users',
   DELETE_USERS: 'delete_users',
   BULK_ACTIONS: 'bulk_actions',
   
-  // 권한 관리
+  // Permission management
   MANAGE_PERMISSIONS: 'manage_permissions',
   ASSIGN_ROLES: 'assign_roles',
   
-  // 시스템 설정
+  // System settings
   MANAGE_SETTINGS: 'manage_settings',
   VIEW_LOGS: 'view_logs',
   EXPORT_DATA: 'export_data'
 };
 
-// 역할별 권한 매핑
+// Role to permission mappings
 export const ROLE_PERMISSIONS = {
   [ROLES.SUPER_ADMIN]: [
     PERMISSIONS.VIEW_DASHBOARD,
@@ -81,7 +81,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_USERS,
     PERMISSIONS.CREATE_USERS,
     PERMISSIONS.EDIT_USERS,
-    PERMISSIONS.DELETE_USERS, // Manager는 자신보다 낮은 레벨만 삭제 가능
+    PERMISSIONS.DELETE_USERS, // Manager can only delete users at lower levels
     PERMISSIONS.EXPORT_DATA
   ],
   [ROLES.USER]: [
@@ -89,11 +89,11 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_USERS // View Only
   ],
   [ROLES.VIEWER]: [
-    PERMISSIONS.VIEW_DASHBOARD // Users 페이지 접근 불가
+    PERMISSIONS.VIEW_DASHBOARD // Cannot access Users page
   ]
 };
 
-// 페이지별 필요 권한
+// Required permissions by page
 export const PAGE_PERMISSIONS = {
   dashboard: [PERMISSIONS.VIEW_DASHBOARD],
   users: [PERMISSIONS.VIEW_USERS],
@@ -101,62 +101,62 @@ export const PAGE_PERMISSIONS = {
   analytics: [PERMISSIONS.VIEW_ANALYTICS]
 };
 
-// Original Role 가져오기 (이메일 기반)
+// Get Original Role (based on email)
 export const getOriginalRole = (email) => {
-  return ACCOUNT_ORIGINAL_ROLES[email] || ROLES.USER; // 기본값은 User
+  return ACCOUNT_ORIGINAL_ROLES[email] || ROLES.USER; // Default is User
 };
 
-// 역할 변경 가능 여부 체크 (자신의 Original Role과 같거나 낮은 레벨로만 변경 가능)
+// Check if role change is allowed (can only change to same or lower level than Original Role)
 export const canSwitchToRole = (originalRole, targetRole) => {
   const originalLevel = ROLE_LEVELS[originalRole];
   const targetLevel = ROLE_LEVELS[targetRole];
   
-  // Original Role과 같거나 더 낮은 레벨(높은 숫자)로만 변경 가능
+  // Can only change to same or lower level (higher number) than Original Role
   return targetLevel >= originalLevel;
 };
 
-// 사용자 관리 권한 체크 (Manager의 경우 자신보다 높거나 같은 레벨 관리 불가)
+// Check user management permissions (Manager cannot manage users at same or higher level)
 export const canManageUser = (managerRole, targetUserRole) => {
   const managerLevel = ROLE_LEVELS[managerRole];
   const targetLevel = ROLE_LEVELS[targetUserRole];
   
-  // Manager는 자신보다 낮은 레벨(높은 숫자)만 관리 가능
+  // Manager can only manage users at lower levels (higher numbers)
   if (managerRole === ROLES.MANAGER) {
     return targetLevel > managerLevel;
   }
   
-  // Super Admin과 Admin은 모든 사용자 관리 가능
+  // Super Admin and Admin can manage all users
   return managerRole === ROLES.SUPER_ADMIN || managerRole === ROLES.ADMIN;
 };
 
-// 권한 체크 함수
+// Permission check function
 export const hasPermission = (userRole, permission) => {
   const rolePermissions = ROLE_PERMISSIONS[userRole] || [];
   return rolePermissions.includes(permission);
 };
 
-// 페이지 접근 권한 체크
+// Page access permission check
 export const canAccessPage = (userRole, pageName) => {
   const requiredPermissions = PAGE_PERMISSIONS[pageName] || [];
   return requiredPermissions.some(permission => hasPermission(userRole, permission));
 };
 
-// 복수 권한 체크
+// Multiple permission check
 export const hasAnyPermission = (userRole, permissions) => {
   return permissions.some(permission => hasPermission(userRole, permission));
 };
 
-// 모든 권한 체크
+// All permissions check
 export const hasAllPermissions = (userRole, permissions) => {
   return permissions.every(permission => hasPermission(userRole, permission));
 };
 
-// 사용자 권한 목록 가져오기
+// Get user permission list
 export const getUserPermissions = (userRole) => {
   return ROLE_PERMISSIONS[userRole] || [];
 };
 
-// 변경 가능한 역할 목록 가져오기
+// Get available roles for switching
 export const getAvailableRoles = (originalRole) => {
   const originalLevel = ROLE_LEVELS[originalRole];
   
@@ -164,6 +164,6 @@ export const getAvailableRoles = (originalRole) => {
     .map(key => ROLES[key])
     .filter(role => {
       const roleLevel = ROLE_LEVELS[role];
-      return roleLevel >= originalLevel; // 같거나 낮은 레벨만
+      return roleLevel >= originalLevel; // Only same or lower levels
     });
 };
